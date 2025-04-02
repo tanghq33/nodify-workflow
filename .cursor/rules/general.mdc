@@ -1,0 +1,10 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+# Project management
+- You may refer to [architecture-overview.md](mdc:docs/architecture-overview.md) for the project architecture overview
+- Reference [tdd-milestones.md](mdc:docs/tdd-milestones.md) for all feature implementations
+- Reference [documentation.md](mdc:docs/documentation.md) for all library API
+- Ensure new code aligns with defined milestones
