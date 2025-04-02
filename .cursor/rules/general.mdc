@@ -1,10 +1,31 @@
 ---
 description: 
 globs: 
-alwaysApply: false
+alwaysApply: true
 ---
 # Project management
 - You may refer to [architecture-overview.md](mdc:docs/architecture-overview.md) for the project architecture overview
 - Reference [tdd-milestones.md](mdc:docs/tdd-milestones.md) for all feature implementations
 - Reference [documentation.md](mdc:docs/documentation.md) for all library API
+- Reference [project-structure.md](mdc:docs/project-structure.md) for example file naming convention and directory structure
 - Ensure new code aligns with defined milestones
+- Each file should always contains just 1 classes
+
+# Planning
+- If you're asked to plan, just plan and dont start implementation yet. Let me review your plan.
+- In planning phase, you don't have to show any code examples. Only show if you're asked to.
+
+# Implementation
+- Use test driven development.
+- Always plan the development flow and thinking to use best practices.
+- Always let me review the plan before start the actual implementation.
+
+# Unit test
+- Use xUnit
+- Prefer mocks instead of fake classes
+- Use NSubstitute instead of Moq
+- Use Shoudly instead of FluentAssertions
+- Test project structure should follow original project structure for easier maintenance
+
+# Naming convention
+- Base class naming convention should be something like "NodeBase", "ConnectionBase" instead of "BaseNode" and "ConnectionBase"

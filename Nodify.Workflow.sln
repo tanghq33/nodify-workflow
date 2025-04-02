@@ -5,6 +5,8 @@ VisualStudioVersion = 17.0.31903.59
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Nodify.Workflow", "Nodify.Workflow\Nodify.Workflow.csproj", "{B6C1DB26-DE55-43BA-8E48-CAB76207B203}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Nodify.Workflow.Tests", "Nodify.Workflow.Tests\Nodify.Workflow.Tests.csproj", "{23B88061-8B8D-49DE-82C4-1AEDE18FA610}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -18,5 +20,9 @@ Global
 		{B6C1DB26-DE55-43BA-8E48-CAB76207B203}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{B6C1DB26-DE55-43BA-8E48-CAB76207B203}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{B6C1DB26-DE55-43BA-8E48-CAB76207B203}.Release|Any CPU.Build.0 = Release|Any CPU
+		{23B88061-8B8D-49DE-82C4-1AEDE18FA610}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{23B88061-8B8D-49DE-82C4-1AEDE18FA610}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{23B88061-8B8D-49DE-82C4-1AEDE18FA610}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{23B88061-8B8D-49DE-82C4-1AEDE18FA610}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal
