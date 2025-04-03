@@ -45,15 +45,15 @@ This document restructures the development milestones to follow a Test-Driven De
 
 #### Day 1-2: Execution Engine Test Suite
 - [x] Write tests for ExecutionContext state management
-  - [ ] Test setting/getting/updating variables
-  - [ ] Test handling of non-existent variables
-  - [ ] Test variable type handling (string, int, bool, etc.)
+  - [x] Test setting/getting/updating variables
+  - [x] Test handling of non-existent variables
+  - [x] Test variable type handling (string, int, bool, etc.)
   - [ ] Test variable scoping (if applicable)
-  - [ ] Test setting/getting execution status
-  - [ ] Test adding/retrieving log entries
+  - [x] Test setting/getting execution status
+  - [x] Test adding/retrieving log entries
   - [ ] Test log filtering (optional)
   - [ ] Test conditional evaluation helpers (if applicable)
-  - [ ] Test tracking the currently executing node (if applicable)
+  - [x] Test tracking the currently executing node (if applicable)
 - [ ] Develop test cases for graph traversal algorithms
   - [ ] Depth-first traversal tests
   - [ ] Breadth-first traversal tests
