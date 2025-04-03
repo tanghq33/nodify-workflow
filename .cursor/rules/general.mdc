@@ -1,39 +1,122 @@
 ---
 description: 
 globs: 
-alwaysApply: false
----
----
-description: 
-globs: 
 alwaysApply: true
 ---
-# Project management
-- You may refer to [architecture-overview.md](mdc:docs/architecture-overview.md) for the project architecture overview
-- Reference [tdd-milestones.md](mdc:docs/tdd-milestones.md) for all feature implementations
-- Reference [documentation.md](mdc:docs/documentation.md) for all library API
-- Reference [project-structure.md](mdc:docs/project-structure.md) for example file naming convention and directory structure
-- Ensure new code aligns with defined milestones
-- Each file should always contains just 1 class
-- Prefer enum over class with constant string
+# Cursor Development Rules & AI Collaboration Guide (C# .NET)
 
-# Planning
-- If you're asked to plan, just plan and dont start implementation yet. Let me review your plan.
-- In planning phase, you don't have to show any code examples. Only show if you're asked to.
+## 📜 Core Philosophy
 
-# Implementation
-- Use test driven development.
-- Always plan the development flow and thinking to use best practices.
-- Always let me review the plan before start the actual implementation.
+1.  e simple, clear, and maintainable solutions. Avoid uity or over-engineering.
+2.  **Iterate:** Preexisting, working code rather thanw solutions from scratch, unless fundamentally necessary or explicitly requested.
+3.  **Focus:** Concentrate efforts on the specific task assigned. Avoid unrelated changes or scope creep.
+4.  **Quality:** Strive for a clean, organized, well-tested, and secure codebase.
+5.  **Collaboration:** This document guides both human developers and the AI assistant for effective teamwork.
 
-# Unit test
-- Use xUnit
-- Prefer mocks instead of fake classes
-- Use NSubstitute instead of Moq
-- Use Shoudly instead of FluentAssertions
-- Test project structure should follow original project structure for easier maintenance
-- Test file naming convention should be [ClassUnderTest]Tests.cs. Example: NodeTests.cs
-- Test method naming convetion should be [MethodUnderTest]_[Scenario]_[ExpectedResult]. Example: GetRegionByKey_WhenRegionExists_ShouldReturnRegion
+## 📚 Project Context & Understanding
 
-# Naming convention
-- Base class naming convention should be something like "NodeBase", "ConnectionBase" instead of "BaseNode" and "ConnectionBase"
+1.  **Documentation First:**
+    * **Always** check and thoroughly review relevant project documentation *before* starting any task. This includes:
+        * `@architecture-overview.md` (Project architecture overview)
+        * `@tdd-milestones.md` (Feature implementation milestones)
+        * `@documentation.md` (Library API documentation)
+        * `@project-structure.md` (File naming, directory structure examples)
+        * `docs/architecture.md` (System architecture, component relationships, layer structure) if it exists.
+        * `docs/technical.md` (Technical specifications, established patterns, .NET version, libraries) if it exists.
+        * `tasks/tasks.md` (Current development tasks, requirements) if it exists.
+    * If documentation is missing, unclear, or conflicts with the request, **ask for clarification**.
+2.  **Architecture Adherence:**
+    * Understand and respect project layer structures (e.g., presentation, business, data access), module boundaries, data flow, system interfaces, and component dependencies outlined in `@architecture-overview.md` and `docs/architecture.md`.
+    * Validate that changes comply with the established architecture. Warn and propose compliant solutions if a violation is detected.
+3.  **Pattern & Tech Stack Awareness:**
+    * Reference `@documentation.md`, `docs/technical.md` and `@project-structure.md` to understand and utilize existing .NET patterns (e.g., Dependency Injection, Repository Pattern, CQRS, MVC, MVVM) and technologies (.NET version, Entity Framework, etc.).
+    * Exhaust options using existing implementations before proposing new patterns or libraries.
+
+## ⚙️ Project Management & Planning
+
+1.  **Milestone Alignment:** Ensure new code aligns with defined milestones in `@tdd-milestones.md`.
+2.  **Single Class Per File:** Each `.cs` file should contain only one public class.
+3.  **Enum Preference:** Prefer `enum` over a class with constant strings for representing a set of named constants.
+4.  **Planning Before Implementation:** If asked to plan, only provide the plan without implementing code. Wait for review before starting implementation.
+5.  **Plan Review:** Always plan the development flow and thinking, and let the developer review the plan before starting the actual implementation. No code examples are needed in the planning phase unless explicitly requested.
+
+## ⚙️ Task Execution & Implementation
+
+1.  **Test-Driven Development (TDD):** Use TDD for all new features and bug fixes.
+2.  **Systematic Change Protocol:** Before making significant changes:
+    * **Identify Impact:** Determine affected classes, namespaces, dependencies, and potential side effects.
+    * **Plan:** Outline the steps. Tackle one logical change or file at a time.
+    * **Verify Testing:** Confirm how the change will be tested. Add unit tests or integration tests if necessary *before* implementing (see TDD).
+3.  **Progress Tracking:**
+    * Keep `docs/status.md` updated with task progress (in-progress, completed, blocked), issues encountered, and completed items if it exists.
+    * Update `tasks/tasks.md` upon task completion or if requirements change during implementation if it exists.
+
+## 🤖 AI Collaboration & Prompting
+
+1.  **Clarity is Key:** Provide clear, specific, and unambiguous instructions to the AI. Define the desired outcome, constraints, and context.
+2.  **Context Referencing:** If a task spans multiple interactions, explicitly remind the AI of relevant previous context, decisions, or code snippets.
+3.  **Suggest vs. Apply:** Clearly state whether the AI should *suggest* a change for human review or *apply* a change directly (use only when high confidence and task is well-defined). Use prefixes like "Suggestion:" or "Applying fix:".
+4.  **Question AI Output:** Human developers should critically review AI-generated code. Question assumptions, verify logic, and don't blindly trust confident-sounding but potentially incorrect suggestions (hallucinations).
+5.  **Focus the AI:** Guide the AI to work on specific, focused parts of the task. Avoid overly broad requests that might lead to architectural or logical errors.
+6.  **Leverage Strengths:** Use the AI for tasks it excels at (boilerplate generation, refactoring specific patterns, finding syntax errors, generating test cases) but maintain human oversight for complex logic, architecture, and security.
+7.  **Incremental Interaction:** Break down complex tasks into smaller steps for the AI. Review and confirm each step before proceeding.
+8.  **Standard Check-in (for AI on large tasks):** Before providing significant code suggestions:
+    * "Confirming understanding: I've reviewed [specific document/previous context]. The goal is [task goal], adhering to [key pattern/constraint]. Proceeding with [planned step]." (This replaces the more robotic "STOP AND VERIFY").
+
+## ✨ Code Quality & Style
+
+1.  **.NET Guidelines:** Use clear, descriptive names. Prefer explicit types, use `var` judiciously, follow C# coding conventions (e.g., PascalCase for public members, camelCase for local variables).
+2.  **Readability & Maintainability:** Write clean, well-organized code. Use namespaces effectively.
+3.  **Small Files & Classes:** Keep classes and files focused and concise. Break down large classes into smaller, single-responsibility classes.
+4.  **Avoid Duplication (DRY):** Actively look for and reuse existing functionality. Refactor to eliminate duplication.
+5.  **Linting/Formatting:** Ensure all code conforms to project's .NET code style guidelines (e.g., using StyleCop, Roslyn analyzers, or project-specific rules).
+6.  **Pattern Consistency:** Adhere to established project patterns (e.g., Dependency Injection, Repository Pattern). Don't introduce new ones without discussion/explicit instruction. If replacing an old pattern, ensure the old implementation is fully removed.
+7.  **File Naming:** Use clear, descriptive names. Follow .NET naming conventions. Avoid "temp", "refactored", "improved", etc., in permanent file names.
+8.  **Base Class Naming:** Base class naming convention should be something like "NodeBase", "ConnectionBase" instead of "BaseNode" and "ConnectionBase"
+9.  **No One-Time Scripts:** Do not commit one-time utility scripts into the main codebase.
+
+## ✅ Testing & Validation
+
+1.  **Unit Testing:**
+    * Use xUnit for unit testing.
+    * Prefer mocks (NSubstitute) over fake classes (NSubstitute instead of Moq).
+    * Use Shouldly for assertions instead of FluentAssertions.
+    * Test project structure should mirror the original project structure for easier maintenance.
+    * Test file naming convention: `[ClassUnderTest]Tests.cs` (e.g., `NodeTests.cs`).
+    * Test method naming convention: `[MethodUnderTest]_[Scenario]_[ExpectedResult]` (e.g., `GetRegionByKey_WhenRegionExists_ShouldReturnRegion`).
+2.  **Comprehensive Tests:** Write thorough unit tests, integration tests, and/or end-to-end tests covering critical paths, edge cases, and major functionality.
+3.  **Tests Must Pass:** All tests **must** pass before committing or considering a task complete. Notify the human developer immediately if tests fail and cannot be easily fixed.
+4.  **No Mock Data (Except Tests):** Use mock data *only* within test environments. Development and production should use real or realistic data sources.
+5.  **Manual Verification:** Supplement automated tests with manual checks where appropriate, especially for UI or API changes.
+
+## 🐛 Debugging & Troubleshooting
+
+1.  **Fix the Root Cause:** Prioritize fixing the underlying issue causing an error, rather than just masking or handling it, unless a temporary workaround is explicitly agreed upon.
+2.  **Console/Log Analysis:** Always check application logs, debugger output, and event logs for errors, warnings, or relevant information after making changes or when debugging. Report findings.
+3.  **Targeted Logging:** For persistent or complex issues, add specific logging statements (using a logging framework like Serilog or NLog) to trace execution and variable states. *Remember to check the output.*
+4.  **Check the `fixes/` Directory:** Before deep-diving into a complex or recurring bug, check `fixes/` for documented solutions to similar past issues.
+5.  **Document Complex Fixes:** If a bug requires significant effort (multiple iterations, complex logic) to fix, create a concise `.md` file in the `fixes/` directory detailing the problem, investigation steps, and the solution. Name it descriptively (e.g., `fixes/resolve-deadlock-in-database-access.md`).
+6.  **Research:** Use available tools (documentation search, Stack Overflow, etc.) to research solutions or best practices when stuck or unsure.
+
+## 🔒 Security
+
+1.  **Server-Side Authority:** Keep sensitive logic, validation, and data manipulation strictly on the server-side (API layer). Use secure API endpoints.
+2.  **Input Sanitization/Validation:** Always sanitize and validate user input on the server-side.
+3.  **Dependency Awareness:** Be mindful of the security implications of adding or updating dependencies.
+4.  **Credentials:** Never hardcode secrets or credentials in the codebase. Use environment variables or a secure secrets management solution (e.g., Azure Key Vault).
+
+## 🌳 Version Control & Environment
+
+1.  **Git Hygiene:**
+    * Commit frequently with clear, atomic messages.
+    * Keep the working directory clean; ensure no unrelated or temporary files are staged or committed.
+    * Use `.gitignore` effectively.
+2.  **Branching Strategy:** Follow the project's established branching strategy. Do not create new branches unless requested or necessary for the workflow (e.g., feature branches).
+3.  **.env Files (appsettings.json):** **Never** commit sensitive configuration files (e.g., `appsettings.Development.json` containing secrets). Use `appsettings.json` for templates. Do not overwrite local configuration files without confirmation.
+4.  **Environment Awareness:** Code should function correctly across different environments (dev, test, prod). Use environment variables or configuration files for environment-specific settings.
+5.  **Server Management:** Stop related running services before starting new ones. Restart services after relevant configuration or backend changes.
+
+## 📄 Documentation Maintenance
+
+1.  **Update Docs:** If code changes impact architecture, technical decisions, established patterns, or task status, update the relevant documentation (`README.md`, `docs/architecture.md`, `docs/technical.md`, `tasks/tasks.md`, `@architecture-overview.md`, `@tdd-milestones.md`, `@documentation.md`, `@project-structure.md`, `docs/status.md`).
+2.  **Keep Rules Updated:** This `.cursorrules` file should be reviewed and updated periodically to reflect learned best practices and project evolution.

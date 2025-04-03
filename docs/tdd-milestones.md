@@ -60,8 +60,8 @@ This document restructures the development milestones to follow a Test-Driven De
   - [x] Cycle detection tests
   - [x] Path finding tests
 - [x] Create tests for execution events (started, completed, failed)
-- [ ] Design tests for asynchronous execution scenarios
-- [ ] Implement tests for execution cancellation
+- [x] Design tests for asynchronous execution scenarios
+- [x] Implement tests for execution cancellation
 
 #### Day 3-4: Execution Engine Implementation
 - [x] Implement ExecutionContext based on test specifications

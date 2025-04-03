@@ -1,8 +1,9 @@
 using System;
 using System.Collections.Generic;
+using System.Threading.Tasks;
+using System.Threading;
 using Nodify.Workflow.Core.Execution;
 using Nodify.Workflow.Core.Execution.Context;
-using System.Threading.Tasks;
 
 namespace Nodify.Workflow.Core.Interfaces;
 
@@ -62,9 +63,10 @@ public interface INode
     bool Validate();
 
     /// <summary>
-    /// Executes the node's logic asynchronously within the specified execution context.
+    /// Executes the node's logic asynchronously.
     /// </summary>
     /// <param name="context">The execution context.</param>
+    /// <param name="cancellationToken">Token to monitor for cancellation requests.</param>
     /// <returns>A task representing the asynchronous operation, yielding the execution result.</returns>
-    Task<NodeExecutionResult> ExecuteAsync(IExecutionContext context);
+    Task<NodeExecutionResult> ExecuteAsync(IExecutionContext context, CancellationToken cancellationToken);
 }

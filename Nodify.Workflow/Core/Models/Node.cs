@@ -1,10 +1,11 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading.Tasks;
+using System.Threading;
 using Nodify.Workflow.Core.Interfaces;
 using Nodify.Workflow.Core.Execution;
 using Nodify.Workflow.Core.Execution.Context;
-using System.Threading.Tasks;
 
 namespace Nodify.Workflow.Core.Models;
 
@@ -15,7 +16,7 @@ namespace Nodify.Workflow.Core.Models;
 public abstract class Node : INode
 {
     /// <inheritdoc />
-    public Guid Id { get; } = Guid.NewGuid();
+    public Guid Id { get; }
 
     /// <inheritdoc />
     public double X { get; set; }
@@ -84,7 +85,7 @@ public abstract class Node : INode
     }
 
     /// <inheritdoc />
-    public abstract Task<NodeExecutionResult> ExecuteAsync(IExecutionContext context);
+    public abstract Task<NodeExecutionResult> ExecuteAsync(IExecutionContext context, CancellationToken cancellationToken);
 
     // Obsolete methods kept for reference or potential future adjustments
     [Obsolete("Use RemoveConnector instead.")]
@@ -97,5 +98,12 @@ public abstract class Node : INode
     public virtual void RemoveOutputConnector(IConnector connector)
     {
         _outputConnectors.Remove(connector);
+    }
+
+    protected Node()
+    {
+        Id = Guid.NewGuid();
+        _inputConnectors = new List<IConnector>();
+        _outputConnectors = new List<IConnector>();
     }
 }
