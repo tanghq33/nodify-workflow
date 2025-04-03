@@ -143,6 +143,64 @@ The current implementation is not thread-safe by default. When using in a multi-
 - Add type-specific constraints
 - Extend existing validation system
 
+## Execution Engine Architecture
+
+### Core Components
+
+#### 1. Execution Context (`IExecutionContext`, `ExecutionContext`)
+- **Purpose**: Manages the state during a single workflow execution instance.
+- **Responsibilities**:
+  - Stores and retrieves variables (`SetVariable`, `GetVariable`, `TryGetVariable`).
+  - Tracks the current execution status (`CurrentStatus`, `SetStatus`, `ExecutionStatus` enum: `NotStarted`, `Running`, `Completed`, `Failed`, `Cancelled`).
+  - Records execution logs (`AddLog`, `GetLogs`).
+  - Tracks the currently executing node (`CurrentNodeId`, `SetCurrentNode`, `ClearCurrentNode`).
+  - Holds a unique execution ID (`ExecutionId`).
+- **Implementation**: `ExecutionContext` provides a dictionary-based implementation for variables (case-insensitive keys) and a list for logs.
+
+#### 2. Node Executor (`INodeExecutor`, `DefaultNodeExecutor`)
+- **Purpose**: Defines the contract for executing the logic of a single node.
+- **Responsibilities**: Encapsulates the mechanism for invoking `INode.ExecuteAsync`.
+- **Implementation**: `DefaultNodeExecutor` directly calls `node.ExecuteAsync`, passing the context and cancellation token. It handles basic null checks but primarily acts as a bridge between the runner and the node's logic.
+
+#### 3. Graph Traversal (`IGraphTraversal`, `DefaultGraphTraversal`)
+- **Purpose**: Determines the order of node execution.
+- **Responsibilities**: Provides algorithms like `TopologicalSort` to get a linear execution sequence for a DAG. Detects cycles.
+- **Usage**: The `WorkflowRunner` uses this service to get the list of nodes to execute.
+
+#### 4. Workflow Runner (`WorkflowRunner`)
+- **Purpose**: Orchestrates the execution of a workflow graph.
+- **Responsibilities**:
+  - Accepts a starting node, execution context, and an optional `CancellationToken`.
+  - Uses `IGraphTraversal` to determine the execution order.
+  - Iterates through nodes in the execution order.
+  - Uses `INodeExecutor` to execute each node.
+  - Manages the overall workflow status (`Running`, `Completed`, `Failed`, `Cancelled`).
+  - Raises execution events at appropriate stages.
+  - Handles exceptions, including `OperationCanceledException` for graceful cancellation.
+
+### Execution Lifecycle & Events
+
+The `WorkflowRunner` raises events to allow external monitoring and interaction:
+
+- **`WorkflowStarted` (`WorkflowExecutionStartedEventArgs`)**: Fired once at the beginning of `RunAsync`.
+- **`NodeStarting` (`NodeExecutionStartingEventArgs`)**: Fired just before a node's execution begins via the `INodeExecutor`.
+- **`NodeCompleted` (`NodeExecutionCompletedEventArgs`)**: Fired after a node executes successfully.
+- **`NodeFailed` (`NodeExecutionFailedEventArgs`)**: Fired if a node's execution results in failure (either by returning `NodeExecutionResult.Failed` or throwing an exception *other* than `OperationCanceledException`). Contains the node and the error.
+- **`WorkflowCancelled` (`WorkflowCancelledEventArgs`)**: Fired if execution is stopped due to a `CancellationToken` request (caught via `OperationCanceledException`).
+- **`WorkflowCompleted` (`WorkflowExecutionCompletedEventArgs`)**: Fired if all nodes in the execution path complete successfully. Contains the final status.
+- **`WorkflowFailed` (`WorkflowExecutionFailedEventArgs`)**: Fired if any node fails or an unhandled exception occurs during the workflow run. Contains the error and potentially the failed node.
+
+### Asynchronous Execution & Cancellation
+
+- **Async Operations**: The core execution path is asynchronous (`async Task`).
+  - `WorkflowRunner.RunAsync`
+  - `INodeExecutor.ExecuteAsync`
+  - `INode.ExecuteAsync`
+- **Cancellation**: A `CancellationToken` is passed down from `RunAsync` through the `INodeExecutor` to `INode.ExecuteAsync`.
+  - **Runner Checks**: The runner checks the token before starting the workflow, before traversing, and before executing each node.
+  - **Node Responsibility**: Individual nodes performing long-running operations (like `Task.Delay`, I/O) should honor the received `CancellationToken`.
+  - **Handling**: `OperationCanceledException` is caught by the runner, which sets the status to `Cancelled` and raises the `WorkflowCancelled` event.
+
 ## Performance Considerations
 
 ### 1. Time Complexity

@@ -326,6 +326,239 @@ catch (InvalidOperationException ex)
 }
 ```
 
+## Workflow Execution
+
+This section describes the components responsible for executing a defined workflow graph.
+
+### Execution Context (`IExecutionContext`, `ExecutionContext`)
+
+Manages the state for a single workflow run.
+
+```csharp
+public interface IExecutionContext
+{
+    Guid ExecutionId { get; }
+    ExecutionStatus CurrentStatus { get; }
+    Guid? CurrentNodeId { get; }
+    
+    void SetVariable(string key, object? value);
+    object? GetVariable(string key);
+    bool TryGetVariable<T>(string key, out T? value);
+    IReadOnlyDictionary<string, object?> GetAllVariables();
+
+    void SetStatus(ExecutionStatus status);
+    void AddLog(string message);
+    IEnumerable<string> GetLogs();
+    void SetCurrentNode(Guid nodeId);
+    void ClearCurrentNode();
+    bool EvaluateCondition(string condition); // Basic condition evaluation
+}
+
+// Concrete implementation
+public class ExecutionContext : IExecutionContext { /* ... */ }
+```
+
+**Key Features:**
+- **State Management**: Stores variables using case-insensitive keys.
+- **Status Tracking**: Tracks the workflow's current state (`NotStarted`, `Running`, `Completed`, `Failed`, `Cancelled`).
+- **Logging**: Collects simple string-based logs during execution.
+
+#### Example: Using ExecutionContext
+
+```csharp
+// Create a new context for a workflow run
+var context = new ExecutionContext();
+
+// Set initial variables
+context.SetVariable("InputData", "some_value");
+context.SetVariable("Threshold", 100);
+
+// Inside a node's ExecuteAsync method:
+public override async Task<NodeExecutionResult> ExecuteAsync(IExecutionContext context, CancellationToken ct)
+{
+    if (context.TryGetVariable<int>("Threshold", out var threshold))
+    {
+        if (threshold > 50)
+        {
+            context.AddLog($"Threshold {threshold} met.");
+            // ... process ...
+            context.SetVariable("ProcessedValue", 123);
+            return NodeExecutionResult.Succeeded();
+        }
+    }
+    context.AddLog("Threshold not met or not found.");
+    return NodeExecutionResult.Failed(new InvalidOperationException("Threshold condition not met."));
+}
+```
+
+### Workflow Runner (`WorkflowRunner`)
+
+Orchestrates the execution of the workflow graph.
+
+```csharp
+public class WorkflowRunner
+{
+    // Constructor requires traversal logic and node execution logic
+    public WorkflowRunner(IGraphTraversal traversal, INodeExecutor nodeExecutor);
+
+    // Events (see below)
+    public event EventHandler<WorkflowExecutionStartedEventArgs>? WorkflowStarted;
+    public event EventHandler<NodeExecutionStartingEventArgs>? NodeStarting;
+    // ... other events ...
+    public event EventHandler<WorkflowCancelledEventArgs>? WorkflowCancelled;
+
+    // Method to start execution
+    public virtual async Task RunAsync(
+        INode startNode, 
+        IExecutionContext context, 
+        CancellationToken cancellationToken = default);
+}
+```
+
+**Execution Flow Diagram:**
+
+```mermaid
+sequenceDiagram
+    participant C as Caller
+    participant R as WorkflowRunner
+    participant T as IGraphTraversal
+    participant E as INodeExecutor
+    participant N as INode
+
+    C->>R: RunAsync(startNode, context, cancellationToken)
+    R->>R: Check for immediate cancellation
+    alt Immediate Cancellation
+        R->>C: Return immediately (status set to Cancelled)
+    else Not Cancelled
+        R->>R: Set Status: Running
+        R->>C: Raise WorkflowStarted event
+        R->>T: TopologicalSort(startNode)
+        alt Traversal Error
+            T-->>R: Exception
+            R->>R: Set Status: Failed
+            R->>C: Raise WorkflowFailed event
+            R->>C: Return
+        else Traversal OK
+            T-->>R: executionOrder (List<INode>)
+            loop For each node in executionOrder
+                R->>R: Check cancellationToken
+                alt Cancellation Requested
+                     R->>R: Throw OperationCanceledException
+                end
+                R->>C: Raise NodeStarting event
+                R->>E: ExecuteAsync(node, context, cancellationToken)
+                E->>N: ExecuteAsync(context, cancellationToken)
+                N-->>E: Task<NodeExecutionResult>
+                E-->>R: await NodeExecutionResult
+                R->>R: Check cancellationToken (after await)
+                 alt Cancellation Requested
+                     R->>R: Throw OperationCanceledException
+                 end
+                alt Node Succeeded
+                    R->>C: Raise NodeCompleted event
+                else Node Failed
+                    R->>C: Raise NodeFailed event
+                    R->>R: Set Status: Failed
+                    R->>C: Raise WorkflowFailed event
+                    R->>C: Return
+                end
+            end
+            R->>R: Set Status: Completed
+            R->>C: Raise WorkflowCompleted event
+        end
+    end
+    R-->>C: Task completes
+    Note right of R: Outer try/catch handles OperationCanceledException 
+    Note right of R: (sets status to Cancelled, raises WorkflowCancelled) 
+    Note right of R: and other unexpected exceptions (sets status Failed, raises WorkflowFailed).
+```
+
+### Execution Events
+
+The `WorkflowRunner` provides events to monitor the execution progress.
+
+- **`WorkflowStarted`**: `EventHandler<WorkflowExecutionStartedEventArgs>`
+  - Raised once when `RunAsync` begins processing (after initial cancellation check).
+  - `WorkflowExecutionStartedEventArgs` contains `IExecutionContext` and `WorkflowId` (Guid).
+- **`NodeStarting`**: `EventHandler<NodeExecutionStartingEventArgs>`
+  - Raised just before `INodeExecutor.ExecuteAsync` is called for a node.
+  - `NodeExecutionStartingEventArgs` inherits from `NodeExecutionEventArgs` (contains `INode`, `IExecutionContext`).
+- **`NodeCompleted`**: `EventHandler<NodeExecutionCompletedEventArgs>`
+  - Raised after a node executes successfully.
+  - `NodeExecutionCompletedEventArgs` inherits from `NodeExecutionEventArgs`.
+- **`NodeFailed`**: `EventHandler<NodeExecutionFailedEventArgs>`
+  - Raised when a node fails execution (returns failed result or throws non-cancellation exception).
+  - `NodeExecutionFailedEventArgs` contains `INode`, `IExecutionContext`, and the `Exception Error`.
+- **`WorkflowCancelled`**: `EventHandler<WorkflowCancelledEventArgs>`
+  - Raised when execution is stopped due to cancellation request.
+  - `WorkflowCancelledEventArgs` contains the `IExecutionContext`.
+- **`WorkflowCompleted`**: `EventHandler<WorkflowExecutionCompletedEventArgs>`
+  - Raised when the entire workflow executes successfully.
+  - `WorkflowExecutionCompletedEventArgs` contains `IExecutionContext` and the final `ExecutionStatus` (Completed).
+- **`WorkflowFailed`**: `EventHandler<WorkflowExecutionFailedEventArgs>`
+  - Raised when the workflow stops due to a node failure or an unexpected runner exception.
+  - `WorkflowExecutionFailedEventArgs` contains `IExecutionContext`, the `Exception Error`, and the `INode? FailedNode` (if applicable).
+
+#### Example: Subscribing to Events
+
+```csharp
+var traversal = new DefaultGraphTraversal();
+var executor = new DefaultNodeExecutor();
+var runner = new WorkflowRunner(traversal, executor);
+var context = new ExecutionContext();
+
+runner.WorkflowStarted += (sender, args) => Console.WriteLine($"Workflow {args.WorkflowId} started.");
+runner.NodeStarting += (sender, args) => Console.WriteLine($"Node {args.Node.Id} starting.");
+runner.NodeCompleted += (sender, args) => Console.WriteLine($"Node {args.Node.Id} completed.");
+runner.NodeFailed += (sender, args) => Console.WriteLine($"Node {args.Node.Id} failed: {args.Error.Message}");
+runner.WorkflowCompleted += (sender, args) => Console.WriteLine($"Workflow completed with status: {args.FinalStatus}");
+runner.WorkflowFailed += (sender, args) => Console.WriteLine($"Workflow failed: {args.Error.Message}");
+runner.WorkflowCancelled += (sender, args) => Console.WriteLine("Workflow cancelled.");
+
+// Assume startNode is defined
+await runner.RunAsync(startNode, context);
+```
+
+### Cancellation
+
+Workflow execution can be cancelled using a `CancellationToken`.
+
+- Pass a `CancellationToken` to `WorkflowRunner.RunAsync`.
+- The token is propagated to the `INodeExecutor` and `INode`.
+- Nodes performing long operations should check the token (`cancellationToken.IsCancellationRequested` or `ThrowIfCancellationRequested()`) or pass it to cancellable async methods (e.g., `Task.Delay(ms, token)`).
+- The `WorkflowRunner` checks for cancellation before executing each node and catches `OperationCanceledException` to trigger the cancellation flow.
+
+#### Example: Running with Cancellation
+
+```csharp
+var runner = new WorkflowRunner(...);
+var context = new ExecutionContext();
+var startNode = ...; // Your starting node
+
+var cts = new CancellationTokenSource();
+
+// Start the workflow in the background
+Task workflowTask = runner.RunAsync(startNode, context, cts.Token);
+
+// Simulate waiting for some condition or user input
+await Task.Delay(1000);
+
+// Decide to cancel
+Console.WriteLine("Requesting cancellation...");
+cts.Cancel();
+
+try
+{
+    // Await the task to observe the cancellation or completion
+    await workflowTask;
+    Console.WriteLine($"Workflow finished with status: {context.CurrentStatus}");
+}
+catch (Exception ex) // Catch any unexpected exceptions from RunAsync itself
+{
+    Console.WriteLine($"Unexpected error during workflow execution: {ex.Message}");
+}
+```
+
 ## Advanced Usage
 
 ### Custom Validation Rules
