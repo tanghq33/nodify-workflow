@@ -1,6 +1,11 @@
 ---
 description: 
 globs: 
+alwaysApply: false
+---
+---
+description: 
+globs: 
 alwaysApply: true
 ---
 # Project management
@@ -26,6 +31,8 @@ alwaysApply: true
 - Use NSubstitute instead of Moq
 - Use Shoudly instead of FluentAssertions
 - Test project structure should follow original project structure for easier maintenance
+- Test file naming convention should be [ClassUnderTest]Tests.cs. Example: NodeTests.cs
+- Test method naming convetion should be [MethodUnderTest]_[Scenario]_[ExpectedResult]. Example: GetRegionByKey_WhenRegionExists_ShouldReturnRegion
 
 # Naming convention
 - Base class naming convention should be something like "NodeBase", "ConnectionBase" instead of "BaseNode" and "ConnectionBase"

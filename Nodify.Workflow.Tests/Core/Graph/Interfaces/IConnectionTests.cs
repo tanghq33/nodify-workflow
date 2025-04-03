@@ -9,7 +9,7 @@ namespace Nodify.Workflow.Tests.Core.Graph.Interfaces
     public class IConnectionTests
     {
         [Fact]
-        public void Connection_Should_Have_Source_And_Target_Connectors()
+        public void Connection_ShouldHaveSourceAndTargetConnectors()
         {
             // Arrange
             var connection = Substitute.For<IConnection>();
@@ -25,7 +25,7 @@ namespace Nodify.Workflow.Tests.Core.Graph.Interfaces
         }
 
         [Fact]
-        public void Connection_Should_Enforce_Source_Must_Be_Output()
+        public void Connection_ShouldEnforceSourceMustBeOutput()
         {
             // Arrange
             var connection = Substitute.For<IConnection>();
@@ -43,7 +43,7 @@ namespace Nodify.Workflow.Tests.Core.Graph.Interfaces
         }
 
         [Fact]
-        public void Connection_Should_Enforce_Target_Must_Be_Input()
+        public void Connection_ShouldEnforceTargetMustBeInput()
         {
             // Arrange
             var connection = Substitute.For<IConnection>();
@@ -61,7 +61,7 @@ namespace Nodify.Workflow.Tests.Core.Graph.Interfaces
         }
 
         [Fact]
-        public void Connection_Should_Enforce_Type_Compatibility()
+        public void Connection_ShouldEnforceTypeCompatibility()
         {
             // Arrange
             var connection = Substitute.For<IConnection>();
@@ -82,7 +82,7 @@ namespace Nodify.Workflow.Tests.Core.Graph.Interfaces
         }
 
         [Fact]
-        public void Connection_Should_Be_Removable()
+        public void Connection_ShouldBeRemovable()
         {
             // Arrange
             var connection = Substitute.For<IConnection>();
@@ -100,7 +100,7 @@ namespace Nodify.Workflow.Tests.Core.Graph.Interfaces
         }
 
         [Fact]
-        public void Connection_Should_Prevent_Circular_References()
+        public void Connection_ShouldPreventCircularReferences()
         {
             // Arrange
             var connection = Substitute.For<IConnection>();
@@ -114,7 +114,7 @@ namespace Nodify.Workflow.Tests.Core.Graph.Interfaces
         }
 
         [Fact]
-        public void Connection_Should_Have_Unique_Identifier()
+        public void Connection_ShouldHaveUniqueIdentifier()
         {
             // Arrange
             var connection1 = Substitute.For<IConnection>();

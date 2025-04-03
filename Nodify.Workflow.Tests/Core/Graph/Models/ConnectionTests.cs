@@ -10,7 +10,7 @@ namespace Nodify.Workflow.Tests.Core.Graph.Models
     public class ConnectionTests
     {
         [Fact]
-        public void Constructor_Should_Initialize_With_Unique_Id()
+        public void Connection_ShouldHaveUniqueId()
         {
             // Arrange
             var source = CreateOutputConnector();
@@ -30,7 +30,7 @@ namespace Nodify.Workflow.Tests.Core.Graph.Models
         }
 
         [Fact]
-        public void Constructor_Should_Initialize_Properties_Correctly()
+        public void Constructor_ShouldInitializePropertiesCorrectly()
         {
             // Arrange
             var source = CreateOutputConnector();
@@ -49,7 +49,7 @@ namespace Nodify.Workflow.Tests.Core.Graph.Models
         }
 
         [Fact]
-        public void Constructor_Should_Throw_On_Null_Source()
+        public void Constructor_ShouldThrowOnNullSource()
         {
             // Arrange
             var target = CreateInputConnector();
@@ -59,7 +59,7 @@ namespace Nodify.Workflow.Tests.Core.Graph.Models
         }
 
         [Fact]
-        public void Constructor_Should_Throw_On_Null_Target()
+        public void Constructor_ShouldThrowOnNullTarget()
         {
             // Arrange
             var source = CreateOutputConnector();
@@ -69,7 +69,7 @@ namespace Nodify.Workflow.Tests.Core.Graph.Models
         }
 
         [Fact]
-        public void Constructor_Should_Throw_On_Invalid_Source_Direction()
+        public void Constructor_ShouldThrowOnInvalidSourceDirection()
         {
             // Arrange
             var source = CreateInputConnector();  // Wrong direction
@@ -80,7 +80,7 @@ namespace Nodify.Workflow.Tests.Core.Graph.Models
         }
 
         [Fact]
-        public void Constructor_Should_Throw_On_Invalid_Target_Direction()
+        public void Constructor_ShouldThrowOnInvalidTargetDirection()
         {
             // Arrange
             var source = CreateOutputConnector();
@@ -91,7 +91,7 @@ namespace Nodify.Workflow.Tests.Core.Graph.Models
         }
 
         [Fact]
-        public void Validate_Should_Return_True_For_Valid_Connection()
+        public void Validate_ShouldReturnTrueForValidConnection()
         {
             // Arrange
             var source = CreateOutputConnector();
@@ -111,7 +111,7 @@ namespace Nodify.Workflow.Tests.Core.Graph.Models
         }
 
         [Fact]
-        public void Remove_Should_Remove_From_Both_Connectors()
+        public void Remove_ShouldRemoveFromBothConnectors()
         {
             // Arrange
             var source = CreateOutputConnector();
@@ -132,7 +132,7 @@ namespace Nodify.Workflow.Tests.Core.Graph.Models
         }
 
         [Fact]
-        public void WouldCreateCircularReference_Should_Detect_Direct_Circular_Reference()
+        public void DetectDirectCircularReference()
         {
             // Arrange
             var node1 = Substitute.For<INode>();
@@ -157,7 +157,7 @@ namespace Nodify.Workflow.Tests.Core.Graph.Models
         }
 
         [Fact]
-        public void WouldCreateCircularReference_Should_Detect_Indirect_Circular_Reference()
+        public void DetectIndirectCircularReference()
         {
             // Arrange
             var node1 = Substitute.For<INode>();

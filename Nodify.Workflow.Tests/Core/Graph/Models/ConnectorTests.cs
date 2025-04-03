@@ -10,7 +10,7 @@ namespace Nodify.Workflow.Tests.Core.Graph.Models
     public class ConnectorTests
     {
         [Fact]
-        public void Constructor_Should_Initialize_With_Unique_Id()
+        public void Constructor_ShouldInitializeWithUniqueId()
         {
             // Arrange
             var node = Substitute.For<INode>();
@@ -24,7 +24,7 @@ namespace Nodify.Workflow.Tests.Core.Graph.Models
         }
 
         [Fact]
-        public void Constructor_Should_Initialize_Properties_Correctly()
+        public void Constructor_ShouldInitializePropertiesCorrectly()
         {
             // Arrange
             var node = Substitute.For<INode>();
@@ -42,7 +42,7 @@ namespace Nodify.Workflow.Tests.Core.Graph.Models
         }
 
         [Fact]
-        public void Constructor_Should_Throw_On_Null_ParentNode()
+        public void Constructor_ShouldThrowOnNullParentNode()
         {
             // Act & Assert
             Should.Throw<ArgumentNullException>(() => 
@@ -50,7 +50,7 @@ namespace Nodify.Workflow.Tests.Core.Graph.Models
         }
 
         [Fact]
-        public void Constructor_Should_Throw_On_Null_DataType()
+        public void Constructor_ShouldThrowOnNullDataType()
         {
             // Arrange
             var node = Substitute.For<INode>();
@@ -61,7 +61,7 @@ namespace Nodify.Workflow.Tests.Core.Graph.Models
         }
 
         [Fact]
-        public void AddConnection_Should_Add_Valid_Connection()
+        public void AddConnection_ShouldAddValidConnection()
         {
             // Arrange
             var node = Substitute.For<INode>();
@@ -82,7 +82,7 @@ namespace Nodify.Workflow.Tests.Core.Graph.Models
         }
 
         [Fact]
-        public void AddConnection_Should_Throw_On_Null_Connection()
+        public void AddConnection_ShouldThrowOnNullConnection()
         {
             // Arrange
             var node = Substitute.For<INode>();
@@ -93,7 +93,7 @@ namespace Nodify.Workflow.Tests.Core.Graph.Models
         }
 
         [Fact]
-        public void AddConnection_Should_Reject_Invalid_Connection()
+        public void AddConnection_ShouldRejectInvalidConnection()
         {
             // Arrange
             var node = Substitute.For<INode>();
@@ -112,7 +112,7 @@ namespace Nodify.Workflow.Tests.Core.Graph.Models
         }
 
         [Fact]
-        public void RemoveConnection_Should_Remove_Connection()
+        public void RemoveConnection_ShouldRemoveConnection()
         {
             // Arrange
             var node = Substitute.For<INode>();
@@ -133,7 +133,7 @@ namespace Nodify.Workflow.Tests.Core.Graph.Models
         }
 
         [Fact]
-        public void RemoveConnection_Should_Return_False_For_Null()
+        public void RemoveConnection_ShouldReturnFalseForNull()
         {
             // Arrange
             var node = Substitute.For<INode>();
@@ -147,7 +147,7 @@ namespace Nodify.Workflow.Tests.Core.Graph.Models
         }
 
         [Fact]
-        public void ValidateConnection_Should_Allow_Compatible_Types()
+        public void ValidateConnection_ShouldAllowCompatibleTypes()
         {
             // Arrange
             var node = Substitute.For<INode>();
@@ -162,7 +162,7 @@ namespace Nodify.Workflow.Tests.Core.Graph.Models
         }
 
         [Fact]
-        public void ValidateConnection_Should_Allow_Inheritance_Compatible_Types()
+        public void ValidateConnection_ShouldAllowInheritanceCompatibleTypes()
         {
             // Arrange
             var node = Substitute.For<INode>();
@@ -177,7 +177,7 @@ namespace Nodify.Workflow.Tests.Core.Graph.Models
         }
 
         [Fact]
-        public void ValidateConnection_Should_Reject_Incompatible_Types()
+        public void ValidateConnection_ShouldRejectIncompatibleTypes()
         {
             // Arrange
             var node = Substitute.For<INode>();
@@ -192,7 +192,7 @@ namespace Nodify.Workflow.Tests.Core.Graph.Models
         }
 
         [Fact]
-        public void ValidateConnection_Should_Reject_Same_Direction()
+        public void ValidateConnection_ShouldRejectSameDirection()
         {
             // Arrange
             var node = Substitute.For<INode>();
@@ -207,7 +207,7 @@ namespace Nodify.Workflow.Tests.Core.Graph.Models
         }
 
         [Fact]
-        public void ValidateConnection_Should_Reject_Multiple_Input_Connections()
+        public void ValidateConnection_ShouldRejectMultipleInputConnections()
         {
             // Arrange
             var node = Substitute.For<INode>();

@@ -10,7 +10,7 @@ namespace Nodify.Workflow.Tests.Core.Graph.Models
     public class NodeTests
     {
         [Fact]
-        public void Constructor_Should_Initialize_With_Unique_Id()
+        public void Constructor_ShouldInitializeWithUniqueId()
         {
             // Arrange & Act
             var node1 = new Node();
@@ -23,7 +23,7 @@ namespace Nodify.Workflow.Tests.Core.Graph.Models
         }
 
         [Fact]
-        public void Constructor_Should_Initialize_Empty_Connector_Collections()
+        public void Constructor_ShouldInitializeEmptyConnectorCollections()
         {
             // Arrange & Act
             var node = new Node();
@@ -36,7 +36,7 @@ namespace Nodify.Workflow.Tests.Core.Graph.Models
         }
 
         [Fact]
-        public void AddInputConnector_Should_Add_Valid_Input_Connector()
+        public void AddInputConnector_ShouldAddValidInputConnector()
         {
             // Arrange
             var node = new Node();
@@ -52,7 +52,7 @@ namespace Nodify.Workflow.Tests.Core.Graph.Models
         }
 
         [Fact]
-        public void AddInputConnector_Should_Throw_On_Null_Connector()
+        public void AddInputConnector_ShouldThrowOnNullConnector()
         {
             // Arrange
             var node = new Node();
@@ -62,7 +62,7 @@ namespace Nodify.Workflow.Tests.Core.Graph.Models
         }
 
         [Fact]
-        public void AddInputConnector_Should_Throw_On_Output_Connector()
+        public void AddInputConnector_ShouldThrowOnOutputConnector()
         {
             // Arrange
             var node = new Node();
@@ -74,7 +74,7 @@ namespace Nodify.Workflow.Tests.Core.Graph.Models
         }
 
         [Fact]
-        public void AddOutputConnector_Should_Add_Valid_Output_Connector()
+        public void AddOutputConnector_ShouldAddValidOutputConnector()
         {
             // Arrange
             var node = new Node();
@@ -90,7 +90,7 @@ namespace Nodify.Workflow.Tests.Core.Graph.Models
         }
 
         [Fact]
-        public void AddOutputConnector_Should_Throw_On_Null_Connector()
+        public void AddOutputConnector_ShouldThrowOnNullConnector()
         {
             // Arrange
             var node = new Node();
@@ -100,7 +100,7 @@ namespace Nodify.Workflow.Tests.Core.Graph.Models
         }
 
         [Fact]
-        public void AddOutputConnector_Should_Throw_On_Input_Connector()
+        public void AddOutputConnector_ShouldThrowOnInputConnector()
         {
             // Arrange
             var node = new Node();
@@ -112,7 +112,7 @@ namespace Nodify.Workflow.Tests.Core.Graph.Models
         }
 
         [Fact]
-        public void RemoveConnector_Should_Remove_And_Cleanup_Connections()
+        public void RemoveConnector_ShouldRemoveAndCleanupConnections()
         {
             // Arrange
             var node = new Node();
@@ -134,7 +134,7 @@ namespace Nodify.Workflow.Tests.Core.Graph.Models
         }
 
         [Fact]
-        public void RemoveConnector_Should_Return_False_For_Null()
+        public void RemoveConnector_ShouldReturnFalseForNull()
         {
             // Arrange
             var node = new Node();
@@ -147,7 +147,7 @@ namespace Nodify.Workflow.Tests.Core.Graph.Models
         }
 
         [Fact]
-        public void Validate_Should_Return_True_For_Valid_Node()
+        public void Validate_ShouldReturnTrueForValidNode()
         {
             // Arrange
             var node = new Node();
@@ -165,7 +165,7 @@ namespace Nodify.Workflow.Tests.Core.Graph.Models
         }
 
         [Fact]
-        public void Validate_Should_Return_False_For_Invalid_ParentNode()
+        public void Validate_ShouldReturnFalseForInvalidParentNode()
         {
             // Arrange
             var node = new Node();
@@ -184,7 +184,7 @@ namespace Nodify.Workflow.Tests.Core.Graph.Models
         }
 
         [Fact]
-        public void Position_Should_Be_Settable()
+        public void Position_ShouldBeSettable()
         {
             // Arrange
             var node = new Node();

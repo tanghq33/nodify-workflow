@@ -10,7 +10,7 @@ namespace Nodify.Workflow.Tests.Core.Graph.Interfaces
     public class IConnectorTests
     {
         [Fact]
-        public void Connector_Should_Have_Unique_Identifier()
+        public void Connector_ShouldHaveUniqueIdentifier()
         {
             // Arrange
             var connector1 = Substitute.For<IConnector>();
@@ -26,7 +26,7 @@ namespace Nodify.Workflow.Tests.Core.Graph.Interfaces
         }
 
         [Fact]
-        public void Connector_Should_Have_Direction()
+        public void Connector_ShouldHaveDirection()
         {
             // Arrange
             var inputConnector = Substitute.For<IConnector>();
@@ -41,7 +41,7 @@ namespace Nodify.Workflow.Tests.Core.Graph.Interfaces
         }
 
         [Fact]
-        public void Connector_Should_Reference_Parent_Node()
+        public void Connector_ShouldReferenceParentNode()
         {
             // Arrange
             var node = Substitute.For<INode>();
@@ -54,7 +54,7 @@ namespace Nodify.Workflow.Tests.Core.Graph.Interfaces
         }
 
         [Fact]
-        public void Connector_Should_Maintain_Connections()
+        public void Connector_ShouldMaintainConnections()
         {
             // Arrange
             var connector = Substitute.For<IConnector>();
@@ -68,7 +68,7 @@ namespace Nodify.Workflow.Tests.Core.Graph.Interfaces
         }
 
         [Fact]
-        public void Connector_Should_Enforce_Type_Compatibility()
+        public void Connector_ShouldEnforceTypeCompatibility()
         {
             // Arrange
             var connector1 = Substitute.For<IConnector>();
@@ -85,7 +85,7 @@ namespace Nodify.Workflow.Tests.Core.Graph.Interfaces
         }
 
         [Fact]
-        public void Connector_Should_Allow_Adding_Connection()
+        public void Connector_ShouldAllowAddingConnection()
         {
             // Arrange
             var connector = Substitute.For<IConnector>();
@@ -102,7 +102,7 @@ namespace Nodify.Workflow.Tests.Core.Graph.Interfaces
         }
 
         [Fact]
-        public void Connector_Should_Allow_Removing_Connection()
+        public void Connector_ShouldAllowRemovingConnection()
         {
             // Arrange
             var connector = Substitute.For<IConnector>();
@@ -119,7 +119,7 @@ namespace Nodify.Workflow.Tests.Core.Graph.Interfaces
         }
 
         [Fact]
-        public void Connector_Should_Validate_Connection_Rules()
+        public void Connector_ShouldValidateConnectionRules()
         {
             // Arrange
             var input = Substitute.For<IConnector>();

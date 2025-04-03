@@ -10,7 +10,7 @@ namespace Nodify.Workflow.Tests.Core.Graph.Interfaces
     public class INodeTests
     {
         [Fact]
-        public void Node_Should_Have_Unique_Identifier()
+        public void Node_ShouldHaveUniqueIdentifier()
         {
             // Arrange
             var node1 = Substitute.For<INode>();
@@ -26,7 +26,7 @@ namespace Nodify.Workflow.Tests.Core.Graph.Interfaces
         }
 
         [Fact]
-        public void Node_Should_Maintain_Input_Connectors()
+        public void Node_ShouldMaintainInputConnectors()
         {
             // Arrange
             var node = Substitute.For<INode>();
@@ -41,7 +41,7 @@ namespace Nodify.Workflow.Tests.Core.Graph.Interfaces
         }
 
         [Fact]
-        public void Node_Should_Maintain_Output_Connectors()
+        public void Node_ShouldMaintainOutputConnectors()
         {
             // Arrange
             var node = Substitute.For<INode>();
@@ -56,7 +56,7 @@ namespace Nodify.Workflow.Tests.Core.Graph.Interfaces
         }
 
         [Fact]
-        public void Node_Should_Allow_Adding_Input_Connector()
+        public void Node_ShouldAllowAddingInputConnector()
         {
             // Arrange
             var node = Substitute.For<INode>();
@@ -72,7 +72,7 @@ namespace Nodify.Workflow.Tests.Core.Graph.Interfaces
         }
 
         [Fact]
-        public void Node_Should_Allow_Adding_Output_Connector()
+        public void Node_ShouldAllowAddingOutputConnector()
         {
             // Arrange
             var node = Substitute.For<INode>();
@@ -88,7 +88,7 @@ namespace Nodify.Workflow.Tests.Core.Graph.Interfaces
         }
 
         [Fact]
-        public void Node_Should_Allow_Removing_Connector()
+        public void Node_ShouldAllowRemovingConnector()
         {
             // Arrange
             var node = Substitute.For<INode>();
@@ -105,7 +105,7 @@ namespace Nodify.Workflow.Tests.Core.Graph.Interfaces
         }
 
         [Fact]
-        public void Node_Should_Track_Position()
+        public void Node_ShouldTrackXYCoordinates()
         {
             // Arrange
             var node = Substitute.For<INode>();
@@ -122,7 +122,7 @@ namespace Nodify.Workflow.Tests.Core.Graph.Interfaces
         }
 
         [Fact]
-        public void Node_Should_Validate()
+        public void Node_ShouldValidateConnectorRelationships()
         {
             // Arrange
             var node = Substitute.For<INode>();

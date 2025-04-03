@@ -8,25 +8,33 @@
     "net8.0": []
   },
   "packageFolders": {
-    "/Users/haoquantang/.nuget/packages/": {}
+    "C:\\Users\\hao-quan.tang\\.nuget\\packages\\": {},
+    "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages": {}
   },
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "/Users/haoquantang/Developer/nodify-workflow/Nodify.Workflow/Nodify.Workflow.csproj",
+      "projectUniqueName": "D:\\vstore\\nodify-workflow\\Nodify.Workflow\\Nodify.Workflow.csproj",
       "projectName": "Nodify.Workflow",
-      "projectPath": "/Users/haoquantang/Developer/nodify-workflow/Nodify.Workflow/Nodify.Workflow.csproj",
-      "packagesPath": "/Users/haoquantang/.nuget/packages/",
-      "outputPath": "/Users/haoquantang/Developer/nodify-workflow/Nodify.Workflow/obj/",
+      "projectPath": "D:\\vstore\\nodify-workflow\\Nodify.Workflow\\Nodify.Workflow.csproj",
+      "packagesPath": "C:\\Users\\hao-quan.tang\\.nuget\\packages\\",
+      "outputPath": "D:\\vstore\\nodify-workflow\\Nodify.Workflow\\obj\\",
       "projectStyle": "PackageReference",
+      "fallbackFolders": [
+        "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
+      ],
       "configFilePaths": [
-        "/Users/haoquantang/.nuget/NuGet/NuGet.Config"
+        "C:\\Users\\hao-quan.tang\\AppData\\Roaming\\NuGet\\NuGet.Config",
+        "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.FallbackLocation.config",
+        "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
       ],
       "originalTargetFrameworks": [
         "net8.0"
       ],
       "sources": {
-        "https://api.nuget.org/v3/index.json": {}
+        "C:\\Program Files (x86)\\Microsoft SDKs\\NuGetPackages\\": {},
+        "https://api.nuget.org/v3/index.json": {},
+        "https://gitlab.vitrox.com.my/api/v4/projects/3272/packages/nuget/index.json": {}
       },
       "frameworks": {
         "net8.0": {
@@ -38,7 +46,13 @@
         "warnAsError": [
           "NU1605"
         ]
-      }
+      },
+      "restoreAuditProperties": {
+        "enableAudit": "true",
+        "auditLevel": "low",
+        "auditMode": "direct"
+      },
+      "SdkAnalysisLevel": "9.0.200"
     },
     "frameworks": {
       "net8.0": {
@@ -59,7 +73,7 @@
             "privateAssets": "all"
           }
         },
-        "runtimeIdentifierGraphPath": "/usr/local/share/dotnet/sdk/8.0.100/PortableRuntimeIdentifierGraph.json"
+        "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\9.0.201/PortableRuntimeIdentifierGraph.json"
       }
     }
   }
