@@ -24,7 +24,7 @@ public class GraphTests
         _node1.AddOutputConnector(_sourceConnector);
         _node2.AddInputConnector(_targetConnector);
 
-        _graph = new Workflow.Core.Graph.Models.Graph();
+        _graph = new Graph();
     }
 
     [Fact]
