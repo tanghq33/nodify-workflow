@@ -1,9 +1,12 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
 using Nodify.Workflow.Core.Interfaces;
 
 namespace Nodify.Workflow.Core.Models;
 
 /// <summary>
-/// Base implementation of a node in the workflow graph
+/// Base implementation of a workflow node
 /// </summary>
 public class Node : INode
 {

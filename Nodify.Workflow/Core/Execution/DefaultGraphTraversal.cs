@@ -1,5 +1,7 @@
-using Nodify.Workflow.Core.Interfaces;
+using System;
 using System.Collections.Generic;
+using System.Linq;
+using Nodify.Workflow.Core.Interfaces;
 
 namespace Nodify.Workflow.Core.Execution;
 
@@ -11,8 +13,8 @@ public class DefaultGraphTraversal : IGraphTraversal
     /// <inheritdoc />
     public void DepthFirstTraversal(INode startNode, Func<INode, bool> visitor)
     {
-        ArgumentNullException.ThrowIfNull(startNode);
-        ArgumentNullException.ThrowIfNull(visitor);
+        if (startNode == null) throw new ArgumentNullException(nameof(startNode));
+        if (visitor == null) throw new ArgumentNullException(nameof(visitor));
 
         var visited = new HashSet<INode>();
         DepthFirstTraversalInternal(startNode, visitor, visited);
@@ -21,8 +23,8 @@ public class DefaultGraphTraversal : IGraphTraversal
     /// <inheritdoc />
     public void BreadthFirstTraversal(INode startNode, Func<INode, bool> visitor)
     {
-        ArgumentNullException.ThrowIfNull(startNode);
-        ArgumentNullException.ThrowIfNull(visitor);
+        if (startNode == null) throw new ArgumentNullException(nameof(startNode));
+        if (visitor == null) throw new ArgumentNullException(nameof(visitor));
 
         var visited = new HashSet<INode>();
         var queue = new Queue<INode>();
@@ -50,7 +52,7 @@ public class DefaultGraphTraversal : IGraphTraversal
     /// <inheritdoc />
     public INode FindNodeById(INode startNode, Guid id)
     {
-        ArgumentNullException.ThrowIfNull(startNode);
+        if (startNode == null) throw new ArgumentNullException(nameof(startNode));
 
         if (startNode.Id == id) return startNode;
 
@@ -81,8 +83,8 @@ public class DefaultGraphTraversal : IGraphTraversal
     /// <inheritdoc />
     public IReadOnlyList<INode> FindShortestPath(INode startNode, INode endNode)
     {
-        ArgumentNullException.ThrowIfNull(startNode);
-        ArgumentNullException.ThrowIfNull(endNode);
+        if (startNode == null) throw new ArgumentNullException(nameof(startNode));
+        if (endNode == null) throw new ArgumentNullException(nameof(endNode));
 
         if (startNode == endNode)
             return new List<INode> { startNode };
@@ -97,7 +99,7 @@ public class DefaultGraphTraversal : IGraphTraversal
         while (queue.Count > 0)
         {
             var path = queue.Dequeue();
-            var currentNode = path[^1]; // Use index from end operator
+            var currentNode = path[path.Count - 1];
 
             foreach (var connector in currentNode.OutputConnectors)
             {
@@ -125,7 +127,7 @@ public class DefaultGraphTraversal : IGraphTraversal
     /// <inheritdoc />
     public IReadOnlyList<INode> GetEntryPoints(INode startNode)
     {
-        ArgumentNullException.ThrowIfNull(startNode);
+        if (startNode == null) throw new ArgumentNullException(nameof(startNode));
 
         var entryPoints = new List<INode>();
         var visited = new HashSet<INode>();
@@ -152,7 +154,7 @@ public class DefaultGraphTraversal : IGraphTraversal
     /// <inheritdoc />
     public IReadOnlyList<INode> GetExitPoints(INode startNode)
     {
-        ArgumentNullException.ThrowIfNull(startNode);
+        if (startNode == null) throw new ArgumentNullException(nameof(startNode));
 
         var exitPoints = new List<INode>();
         var visited = new HashSet<INode>();
@@ -179,7 +181,7 @@ public class DefaultGraphTraversal : IGraphTraversal
     /// <inheritdoc />
     public IReadOnlyList<INode> TopologicalSort(INode startNode)
     {
-        ArgumentNullException.ThrowIfNull(startNode);
+        if (startNode == null) throw new ArgumentNullException(nameof(startNode));
 
         var visited = new HashSet<INode>();
         var visiting = new HashSet<INode>(); // For cycle detection

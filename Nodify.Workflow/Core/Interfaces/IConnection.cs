@@ -1,3 +1,5 @@
+using System;
+
 namespace Nodify.Workflow.Core.Interfaces;
 
 /// <summary>
