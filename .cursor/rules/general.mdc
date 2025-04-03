@@ -14,7 +14,8 @@ alwaysApply: true
 - Reference [documentation.md](mdc:docs/documentation.md) for all library API
 - Reference [project-structure.md](mdc:docs/project-structure.md) for example file naming convention and directory structure
 - Ensure new code aligns with defined milestones
-- Each file should always contains just 1 classes
+- Each file should always contains just 1 class
+- Prefer enum over class with constant string
 
 # Planning
 - If you're asked to plan, just plan and dont start implementation yet. Let me review your plan.
