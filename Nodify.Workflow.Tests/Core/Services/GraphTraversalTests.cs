@@ -1,14 +1,8 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using Xunit;
+using Nodify.Workflow.Core.Interfaces;
 using NSubstitute;
 using Shouldly;
-using Nodify.Workflow.Core.Graph.Interfaces;
-using Nodify.Workflow.Core.Graph.Models;
-using Nodify.Workflow.Core.Graph.Services;
 
-namespace Nodify.Workflow.Tests.Core.Graph.Services
+namespace Nodify.Workflow.Tests.Core.Services
 {
     public class GraphTraversalTests
     {
@@ -47,7 +41,7 @@ namespace Nodify.Workflow.Tests.Core.Graph.Services
             var visitedNodes = new List<INode>();
 
             // Act
-            traversal.DepthFirstTraversal(_startNode, node => 
+            traversal.DepthFirstTraversal(_startNode, node =>
             {
                 visitedNodes.Add(node);
                 return true;
@@ -68,7 +62,7 @@ namespace Nodify.Workflow.Tests.Core.Graph.Services
             var visitedNodes = new List<INode>();
 
             // Act
-            traversal.BreadthFirstTraversal(_startNode, node => 
+            traversal.BreadthFirstTraversal(_startNode, node =>
             {
                 visitedNodes.Add(node);
                 return true;
@@ -100,7 +94,7 @@ namespace Nodify.Workflow.Tests.Core.Graph.Services
             var visitedNodes = new HashSet<INode>();
 
             // Act
-            traversal.DepthFirstTraversal(_startNode, node => 
+            traversal.DepthFirstTraversal(_startNode, node =>
             {
                 visitedNodes.Add(node);
                 return true;
@@ -123,7 +117,7 @@ namespace Nodify.Workflow.Tests.Core.Graph.Services
             var visitedNodes = new List<INode>();
 
             // Act
-            traversal.DepthFirstTraversal(emptyNode, node => 
+            traversal.DepthFirstTraversal(emptyNode, node =>
             {
                 visitedNodes.Add(node);
                 return true;
@@ -150,7 +144,7 @@ namespace Nodify.Workflow.Tests.Core.Graph.Services
             var visitedSpecialNodes = new List<INode>();
 
             // Act
-            traversal.DepthFirstTraversal(specialNode, node => 
+            traversal.DepthFirstTraversal(specialNode, node =>
             {
                 if (node is ISpecialNode)
                 {
@@ -254,4 +248,4 @@ namespace Nodify.Workflow.Tests.Core.Graph.Services
 
     // Helper interface for type filtering test
     public interface ISpecialNode : INode { }
-} 
+}
