@@ -40,10 +40,37 @@ public class GraphTests
     }
 
     [Fact]
-    public void AddNode_ShouldThrowOnNullNode()
+    public void TryAddNode_ShouldProvideDetailedResult()
     {
-        // Act & Assert
-        Should.Throw<ArgumentNullException>(() => _graph.AddNode(null));
+        // Act
+        var result = _graph.TryAddNode(_node1);
+
+        // Assert
+        result.Success.ShouldBeTrue();
+        result.Result.ShouldBe(_node1);
+        result.ErrorMessage.ShouldBeEmpty();
+    }
+
+    [Fact]
+    public void AddNode_ShouldHandleNullNode()
+    {
+        // Act
+        var result = _graph.AddNode(null);
+
+        // Assert
+        result.ShouldBeFalse();
+    }
+
+    [Fact]
+    public void TryAddNode_ShouldProvideErrorForNullNode()
+    {
+        // Act
+        var result = _graph.TryAddNode(null);
+
+        // Assert
+        result.Success.ShouldBeFalse();
+        result.Result.ShouldBeNull();
+        result.ErrorMessage.ShouldBe("Node cannot be null");
     }
 
     [Fact]
@@ -65,6 +92,26 @@ public class GraphTests
     }
 
     [Fact]
+    public void TryRemoveNode_ShouldProvideDetailedResult()
+    {
+        // Arrange
+        _graph.AddNode(_node1);
+        _graph.AddNode(_node2);
+        _graph.AddConnection(_sourceConnector, _targetConnector);
+
+        // Act
+        var result = _graph.TryRemoveNode(_node1);
+
+        // Assert
+        result.Success.ShouldBeTrue();
+        result.Result.ShouldBeTrue();
+        result.ErrorMessage.ShouldBeEmpty();
+        _graph.Nodes.Count.ShouldBe(1);
+        _graph.Nodes.ShouldNotContain(_node1);
+        _graph.Connections.Count.ShouldBe(0);
+    }
+
+    [Fact]
     public void RemoveNode_ShouldReturnFalseForNonExistentNode()
     {
         // Arrange
@@ -75,6 +122,21 @@ public class GraphTests
 
         // Assert
         result.ShouldBeFalse();
+    }
+
+    [Fact]
+    public void TryRemoveNode_ShouldProvideErrorForNonExistentNode()
+    {
+        // Arrange
+        var nonExistentNode = new Node();
+
+        // Act
+        var result = _graph.TryRemoveNode(nonExistentNode);
+
+        // Assert
+        result.Success.ShouldBeFalse();
+        result.Result.ShouldBeFalse();
+        result.ErrorMessage.ShouldBe("Node not found in graph");
     }
 
     [Fact]
@@ -95,6 +157,24 @@ public class GraphTests
     }
 
     [Fact]
+    public void TryAddConnection_ShouldProvideDetailedResult()
+    {
+        // Arrange
+        _graph.AddNode(_node1);
+        _graph.AddNode(_node2);
+
+        // Act
+        var result = _graph.TryAddConnection(_sourceConnector, _targetConnector);
+
+        // Assert
+        result.Success.ShouldBeTrue();
+        result.Result.ShouldNotBeNull();
+        result.ErrorMessage.ShouldBeEmpty();
+        result.Result.Source.ShouldBe(_sourceConnector);
+        result.Result.Target.ShouldBe(_targetConnector);
+    }
+
+    [Fact]
     public void AddConnection_ShouldReturnNullForInvalidConnection()
     {
         // Arrange
@@ -111,6 +191,23 @@ public class GraphTests
     }
 
     [Fact]
+    public void TryAddConnection_ShouldProvideErrorForInvalidConnection()
+    {
+        // Arrange
+        var invalidConnector = new Connector(_node2, ConnectorDirection.Input, typeof(int));
+        _graph.AddNode(_node1);
+        _graph.AddNode(_node2);
+
+        // Act
+        var result = _graph.TryAddConnection(_sourceConnector, invalidConnector);
+
+        // Assert
+        result.Success.ShouldBeFalse();
+        result.Result.ShouldBeNull();
+        result.ErrorMessage.ShouldNotBeEmpty();
+    }
+
+    [Fact]
     public void RemoveConnection_ShouldDisconnectNodes()
     {
         // Arrange
@@ -123,6 +220,26 @@ public class GraphTests
 
         // Assert
         result.ShouldBeTrue();
+        _graph.Connections.Count.ShouldBe(0);
+        _sourceConnector.Connections.Count.ShouldBe(0);
+        _targetConnector.Connections.Count.ShouldBe(0);
+    }
+
+    [Fact]
+    public void TryRemoveConnection_ShouldProvideDetailedResult()
+    {
+        // Arrange
+        _graph.AddNode(_node1);
+        _graph.AddNode(_node2);
+        var connection = _graph.AddConnection(_sourceConnector, _targetConnector);
+
+        // Act
+        var result = _graph.TryRemoveConnection(connection);
+
+        // Assert
+        result.Success.ShouldBeTrue();
+        result.Result.ShouldBeTrue();
+        result.ErrorMessage.ShouldBeEmpty();
         _graph.Connections.Count.ShouldBe(0);
         _sourceConnector.Connections.Count.ShouldBe(0);
         _targetConnector.Connections.Count.ShouldBe(0);
@@ -170,6 +287,35 @@ public class GraphTests
     }
 
     [Fact]
+    public void TryValidate_ShouldProvideDetailedValidationResult()
+    {
+        // Arrange
+        var node3 = new Node();
+        var connector1 = new Connector(node3, ConnectorDirection.Output, typeof(string));
+        var connector2 = new Connector(_node1, ConnectorDirection.Input, typeof(string));
+        node3.AddOutputConnector(connector1);
+        _node1.AddInputConnector(connector2);
+
+        _graph.AddNode(_node1);
+        _graph.AddNode(_node2);
+        _graph.AddNode(node3);
+
+        // Create a cycle: node1 -> node2 -> node3 -> node1
+        _graph.AddConnection(_sourceConnector, _targetConnector);
+        _graph.AddConnection(new Connector(_node2, ConnectorDirection.Output, typeof(string)),
+                           new Connector(node3, ConnectorDirection.Input, typeof(string)));
+        _graph.AddConnection(connector1, connector2);
+
+        // Act
+        var result = _graph.TryValidate();
+
+        // Assert
+        result.Success.ShouldBeFalse();
+        result.Result.ShouldBeFalse();
+        result.ErrorMessage.ShouldContain("Circular references found");
+    }
+
+    [Fact]
     public void ValidateGraph_ShouldPassForValidGraph()
     {
         // Arrange
@@ -182,5 +328,22 @@ public class GraphTests
 
         // Assert
         isValid.ShouldBeTrue();
+    }
+
+    [Fact]
+    public void TryValidate_ShouldProvideDetailedResultForValidGraph()
+    {
+        // Arrange
+        _graph.AddNode(_node1);
+        _graph.AddNode(_node2);
+        _graph.AddConnection(_sourceConnector, _targetConnector);
+
+        // Act
+        var result = _graph.TryValidate();
+
+        // Assert
+        result.Success.ShouldBeTrue();
+        result.Result.ShouldBeTrue();
+        result.ErrorMessage.ShouldBeEmpty();
     }
 }
