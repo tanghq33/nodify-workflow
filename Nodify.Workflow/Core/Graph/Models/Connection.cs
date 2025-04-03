@@ -33,6 +33,10 @@ namespace Nodify.Workflow.Core.Graph.Models
 
             if (!source.ValidateConnection(target))
                 throw new ArgumentException("Invalid connection between connectors");
+
+            // Add this connection to both connectors
+            source.AddConnection(this);
+            target.AddConnection(this);
         }
 
         /// <inheritdoc />

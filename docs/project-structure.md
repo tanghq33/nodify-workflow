@@ -9,18 +9,17 @@ Nodify.Workflow/
 
 Nodify.Workflow/
 ├── Core/
-│   ├── Graph/
-│   │   ├── Models/               # Concrete graph components
-│   │   │   ├── Node.cs
-│   │   │   ├── Connector.cs
-│   │   │   ├── Connection.cs
-│   │   │   └── Graph.cs
-│   │   ├── Interfaces/           # Contracts
-│   │   │   ├── INode.cs
-│   │   │   ├── IConnector.cs
-│   │   │   └── IGraph.cs
-│   │   └── Services/             # Graph utilities
-│   │       └── GraphTraversal.cs
+│   ├── Models/               # Concrete graph components
+│   │   ├── Node.cs
+│   │   ├── Connector.cs
+│   │   ├── Connection.cs
+│   │   └── Graph.cs
+│   ├── Interfaces/           # Contracts
+│   │   ├── INode.cs
+│   │   ├── IConnector.cs
+│   │   └── IGraph.cs
+│   └── Services/             # Graph utilities
+│       └── GraphTraversal.cs
 │   │
 │   ├── Execution/
 │   │   ├── Context/              # Execution state management

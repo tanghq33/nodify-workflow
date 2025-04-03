@@ -12,31 +12,31 @@ This document restructures the development milestones to follow a Test-Driven De
   - [x] IConnector tests for direction, validation, connection management
   - [x] IConnection tests for validation, circular reference detection
 - [x] Create test suite for Graph operations (add/remove nodes, connections)
-- [x] Develop tests for graph validation scenarios
-  - [x] Connection validation between connectors
-  - [x] Type compatibility checks
-  - [x] Circular reference detection
+- [ ] Develop tests for graph validation scenarios
+  - [ ] Connection validation between connectors
+  - [ ] Type compatibility checks
+  - [ ] Circular reference detection
 - [ ] Create tests for graph traversal and search operations
 
 #### Day 3-4: Graph Model Implementation
-- [x] Implement core interfaces based on test specifications
-  - [x] INode interface implementation
-  - [x] IConnector interface implementation
-  - [x] IConnection interface implementation
-- [x] Develop base classes to satisfy node and connector tests
-  - [x] Connection class with validation and circular reference detection
-  - [x] Connector class with type validation and connection management
-- [x] Implement graph validation functionality
-  - [x] Connection validation rules
-  - [x] Type compatibility checking
-  - [x] Circular reference prevention
+- [ ] Implement core interfaces based on test specifications
+  - [ ] INode interface implementation
+  - [ ] IConnector interface implementation
+  - [ ] IConnection interface implementation
+- [ ] Develop base classes to satisfy node and connector tests
+  - [ ] Connection class with validation and circular reference detection
+  - [ ] Connector class with type validation and connection management
+- [ ] Implement graph validation functionality
+  - [ ] Connection validation rules
+  - [ ] Type compatibility checking
+  - [ ] Circular reference prevention
 - [ ] Add graph traversal mechanisms
 - [ ] Ensure all written tests pass
 
 #### Day 5: Refactoring and Documentation
-- [x] Refactor implementation for clarity and performance
-  - [x] Improved circular reference detection
-  - [x] Enhanced connection validation
+- [ ] Refactor implementation for clarity and performance
+  - [ ] Improved circular reference detection
+  - [ ] Enhanced connection validation
 - [ ] Document API with examples
 - [ ] Create usage examples for graph model
 - [ ] Review test coverage and add tests for edge cases
@@ -46,6 +46,10 @@ This document restructures the development milestones to follow a Test-Driven De
 #### Day 1-2: Execution Engine Test Suite
 - [ ] Write tests for ExecutionContext state management
 - [ ] Develop test cases for graph traversal algorithms
+  - [ ] Depth-first traversal tests
+  - [ ] Breadth-first traversal tests
+  - [ ] Cycle detection tests
+  - [ ] Path finding tests
 - [ ] Create tests for execution events (started, completed, failed)
 - [ ] Design tests for asynchronous execution scenarios
 - [ ] Implement tests for execution cancellation
@@ -53,6 +57,10 @@ This document restructures the development milestones to follow a Test-Driven De
 #### Day 3-4: Execution Engine Implementation
 - [ ] Implement ExecutionContext based on test specifications
 - [ ] Develop scheduler/traversal algorithm to pass tests
+  - [ ] Depth-first traversal implementation
+  - [ ] Breadth-first traversal implementation
+  - [ ] Cycle handling
+  - [ ] Path finding algorithms
 - [ ] Create execution event system as defined in tests
 - [ ] Implement asynchronous execution support
 - [ ] Add cancellation mechanism
@@ -284,8 +292,16 @@ This document restructures the development milestones to follow a Test-Driven De
 
 #### Day 3-4: Documentation Development
 - [ ] Create comprehensive API documentation
+  - [ ] Core components documentation
+  - [ ] Graph traversal documentation
+  - [ ] Best practices and examples
+  - [ ] Error handling guidelines
 - [ ] Develop user guide with examples
 - [ ] Write architecture reference documentation
+  - [ ] Core components architecture
+  - [ ] Design decisions and rationale
+  - [ ] Performance considerations
+  - [ ] Known limitations
 - [ ] Create tutorial documentation for common tasks
 - [ ] Implement code examples for key workflows
 
