@@ -59,7 +59,7 @@ This document restructures the development milestones to follow a Test-Driven De
   - [x] Breadth-first traversal tests
   - [x] Cycle detection tests
   - [x] Path finding tests
-- [ ] Create tests for execution events (started, completed, failed)
+- [x] Create tests for execution events (started, completed, failed)
 - [ ] Design tests for asynchronous execution scenarios
 - [ ] Implement tests for execution cancellation
 
@@ -70,7 +70,7 @@ This document restructures the development milestones to follow a Test-Driven De
   - [x] Breadth-first traversal implementation
   - [x] Cycle handling
   - [x] Path finding algorithms
-- [ ] Create execution event system as defined in tests
+- [x] Create execution event system as defined in tests
 - [ ] Implement asynchronous execution support
 - [ ] Add cancellation mechanism
 

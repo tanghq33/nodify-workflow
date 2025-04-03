@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Diagnostics.CodeAnalysis;
 
 namespace Nodify.Workflow.Core.Execution.Context
 {
@@ -9,14 +10,28 @@ namespace Nodify.Workflow.Core.Execution.Context
     /// </summary>
     public class ExecutionContext : IExecutionContext
     {
-        private readonly Dictionary<string, object?> _variables = new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase);
+        private readonly Dictionary<string, object> _variables = new();
         private readonly List<string> _logs = new List<string>();
         private Guid? _currentNodeId;
+        private ExecutionStatus _currentStatus = ExecutionStatus.NotStarted;
+
+        /// <summary>
+        /// Gets the unique identifier for this execution context.
+        /// </summary>
+        public Guid ExecutionId { get; }
+
+        /// <summary>
+        /// Initializes a new instance of the <see cref="ExecutionContext"/> class.
+        /// </summary>
+        public ExecutionContext()
+        {
+            ExecutionId = Guid.NewGuid();
+        }
 
         /// <summary>
         /// Gets the current status of the workflow execution.
         /// </summary>
-        public ExecutionStatus CurrentStatus { get; private set; } = ExecutionStatus.NotStarted;
+        public ExecutionStatus CurrentStatus => _currentStatus;
 
         /// <summary>
         /// Gets the ID of the node currently being executed, if any.
@@ -28,7 +43,7 @@ namespace Nodify.Workflow.Core.Execution.Context
         /// </summary>
         /// <param name="key">The case-insensitive key of the variable.</param>
         /// <param name="value">The value to store.</param>
-        public void SetVariable(string key, object? value)
+        public void SetVariable(string key, object value)
         {
             if (string.IsNullOrWhiteSpace(key))
             {
@@ -44,15 +59,11 @@ namespace Nodify.Workflow.Core.Execution.Context
         /// <returns>The value of the variable, or null if the key is not found.</returns>
         public object? GetVariable(string key)
         {
-             if (string.IsNullOrWhiteSpace(key))
+            if (string.IsNullOrWhiteSpace(key))
             {
                 throw new ArgumentException("Variable key cannot be null or whitespace.", nameof(key));
             }
-            if (_variables.TryGetValue(key, out object? value))
-            {
-                return value;
-            }
-            return null;
+            return _variables.TryGetValue(key, out var value) ? value : null;
         }
 
         /// <summary>
@@ -66,31 +77,17 @@ namespace Nodify.Workflow.Core.Execution.Context
         {
             if (string.IsNullOrWhiteSpace(key))
             {
-                 throw new ArgumentException("Variable key cannot be null or whitespace.", nameof(key));
+                throw new ArgumentException("Variable key cannot be null or whitespace.", nameof(key));
             }
 
-            if (_variables.TryGetValue(key, out object? objValue))
+            if (_variables.TryGetValue(key, out var objValue) && objValue is T typedValue)
             {
-                if (objValue is T typedValue)
-                {
-                    value = typedValue;
-                    return true;
-                }
-                if (objValue == null && default(T) == null)
-                {
-                     value = default;
-                     return true;
-                }
-                value = default;
-                return false;
+                value = typedValue;
+                return true;
             }
-            else
-            {
-                value = default;
-                return false;
-            }
+            value = default;
+            return false;
         }
-
 
         /// <summary>
         /// Sets the current execution status.
@@ -98,7 +95,7 @@ namespace Nodify.Workflow.Core.Execution.Context
         /// <param name="status">The new status.</param>
         public void SetStatus(ExecutionStatus status)
         {
-            CurrentStatus = status;
+            _currentStatus = status;
         }
 
         /// <summary>
@@ -149,6 +146,29 @@ namespace Nodify.Workflow.Core.Execution.Context
              }
             System.Diagnostics.Debug.WriteLine($"Warning: Condition evaluation for '{condition}' not fully implemented.");
             return false;
+        }
+
+        /// <summary>
+        /// Adds a variable to the execution context.
+        /// </summary>
+        /// <param name="key">The case-insensitive key of the variable.</param>
+        /// <param name="value">The value to store.</param>
+        public void AddVariable(string key, object value)
+        {
+            if (_variables.ContainsKey(key))
+            {
+                throw new ArgumentException($"Variable with key '{key}' already exists.", nameof(key));
+            }
+            _variables.Add(key, value);
+        }
+
+        /// <summary>
+        /// Gets all variables from the execution context.
+        /// </summary>
+        /// <returns>A read-only dictionary of all variables.</returns>
+        public IReadOnlyDictionary<string, object> GetAllVariables()
+        {
+            return _variables;
         }
     }
 } 

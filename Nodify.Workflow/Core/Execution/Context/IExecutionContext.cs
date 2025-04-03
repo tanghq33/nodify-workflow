@@ -76,5 +76,16 @@ namespace Nodify.Workflow.Core.Execution.Context
         /// <param name="condition">The condition string to evaluate.</param>
         /// <returns>The result of the condition evaluation.</returns>
         bool EvaluateCondition(string condition); // Or a more complex input type
+
+        /// <summary>
+        /// Gets the execution ID.
+        /// </summary>
+        Guid ExecutionId { get; }
+
+        /// <summary>
+        /// Gets all variables in the execution context.
+        /// </summary>
+        /// <returns>A read-only dictionary containing all variables.</returns>
+        IReadOnlyDictionary<string, object> GetAllVariables();
     }
 } 
