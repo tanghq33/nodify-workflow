@@ -7,7 +7,7 @@ alwaysApply: true
 
 ## 📜 Core Philosophy
 
-1.  e simple, clear, and maintainable solutions. Avoid uity or over-engineering.
+1.  **Simplicity:** Prioritize simple, clear, and maintainable solutions. Avoid uity or over-engineering.
 2.  **Iterate:** Preexisting, working code rather thanw solutions from scratch, unless fundamentally necessary or explicitly requested.
 3.  **Focus:** Concentrate efforts on the specific task assigned. Avoid unrelated changes or scope creep.
 4.  **Quality:** Strive for a clean, organized, well-tested, and secure codebase.
