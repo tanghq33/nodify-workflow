@@ -54,22 +54,22 @@ This document restructures the development milestones to follow a Test-Driven De
   - [ ] Test log filtering (optional)
   - [ ] Test conditional evaluation helpers (if applicable)
   - [x] Test tracking the currently executing node (if applicable)
-- [ ] Develop test cases for graph traversal algorithms
-  - [ ] Depth-first traversal tests
-  - [ ] Breadth-first traversal tests
-  - [ ] Cycle detection tests
-  - [ ] Path finding tests
+- [x] Develop test cases for graph traversal algorithms
+  - [x] Depth-first traversal tests
+  - [x] Breadth-first traversal tests
+  - [x] Cycle detection tests
+  - [x] Path finding tests
 - [ ] Create tests for execution events (started, completed, failed)
 - [ ] Design tests for asynchronous execution scenarios
 - [ ] Implement tests for execution cancellation
 
 #### Day 3-4: Execution Engine Implementation
-- [ ] Implement ExecutionContext based on test specifications
-- [ ] Develop scheduler/traversal algorithm to pass tests
-  - [ ] Depth-first traversal implementation
-  - [ ] Breadth-first traversal implementation
-  - [ ] Cycle handling
-  - [ ] Path finding algorithms
+- [x] Implement ExecutionContext based on test specifications
+- [x] Develop scheduler/traversal algorithm to pass tests
+  - [x] Depth-first traversal implementation
+  - [x] Breadth-first traversal implementation
+  - [x] Cycle handling
+  - [x] Path finding algorithms
 - [ ] Create execution event system as defined in tests
 - [ ] Implement asynchronous execution support
 - [ ] Add cancellation mechanism

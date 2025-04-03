@@ -36,7 +36,7 @@ public class DefaultGraphTraversal : IGraphTraversal
         while (queue.Count > 0)
         {
             var node = queue.Dequeue();
-            var connectedNodes = GetConnectedNodes(node);
+            var connectedNodes = GetDownstreamNodes(node);
 
             foreach (var nextNode in connectedNodes)
             {
@@ -65,7 +65,7 @@ public class DefaultGraphTraversal : IGraphTraversal
         while (queue.Count > 0)
         {
             var node = queue.Dequeue();
-            var connectedNodes = GetConnectedNodes(node);
+            var connectedNodes = GetDownstreamNodes(node);
 
             foreach (var nextNode in connectedNodes)
             {
@@ -213,15 +213,85 @@ public class DefaultGraphTraversal : IGraphTraversal
         return sorted;
     }
 
+    /// <inheritdoc />
+    public IEnumerable<IReadOnlyList<INode>> FindAllSimplePaths(INode startNode, INode endNode)
+    {
+        if (startNode == null) throw new ArgumentNullException(nameof(startNode));
+        if (endNode == null) throw new ArgumentNullException(nameof(endNode));
+
+        var allPaths = new List<IReadOnlyList<INode>>();
+        var currentPath = new List<INode>();
+        var visitedInPath = new HashSet<INode>(); // Track nodes visited in the current path to avoid cycles
+
+        FindPathsRecursive(startNode, endNode, currentPath, visitedInPath, allPaths);
+
+        return allPaths;
+    }
+
+    // Recursive helper for finding all simple paths
+    private void FindPathsRecursive(
+        INode currentNode,
+        INode targetNode,
+        List<INode> currentPath,
+        HashSet<INode> visitedInPath,
+        List<IReadOnlyList<INode>> allPaths)
+    {
+        // Add current node to the path and mark as visited for this path
+        currentPath.Add(currentNode);
+        visitedInPath.Add(currentNode);
+
+        // Check if we reached the target
+        if (currentNode == targetNode)
+        {
+            // Found a path, add a copy to the results
+            allPaths.Add(new List<INode>(currentPath));
+        }
+        else
+        {
+            // Explore downstream neighbors
+            foreach (var neighbor in GetDownstreamNodes(currentNode))
+            {
+                // Recurse only if the neighbor hasn't been visited in the *current* path
+                if (!visitedInPath.Contains(neighbor))
+                {
+                    FindPathsRecursive(neighbor, targetNode, currentPath, visitedInPath, allPaths);
+                }
+            }
+        }
+
+        // Backtrack: Remove current node from path and visited set for this path
+        // This allows exploring other paths that might revisit this node via a different route.
+        currentPath.RemoveAt(currentPath.Count - 1);
+        visitedInPath.Remove(currentNode);
+    }
+
     private void DepthFirstTraversalInternal(INode node, Func<INode, bool> visitor, HashSet<INode> visited)
     {
         if (!visited.Add(node)) return;
         if (!visitor(node)) return;
 
-        foreach (var nextNode in GetConnectedNodes(node))
+        foreach (var nextNode in GetDownstreamNodes(node))
         {
             DepthFirstTraversalInternal(nextNode, visitor, visited);
         }
+    }
+
+    private static HashSet<INode> GetDownstreamNodes(INode node)
+    {
+        var connectedNodes = new HashSet<INode>();
+
+        foreach (var connector in node.OutputConnectors)
+        {
+            foreach (var connection in connector.Connections)
+            {
+                if(connection.Target?.ParentNode != null)
+                {
+                    connectedNodes.Add(connection.Target.ParentNode);
+                }
+            }
+        }
+
+        return connectedNodes;
     }
 
     private static HashSet<INode> GetConnectedNodes(INode node)
@@ -233,7 +303,10 @@ public class DefaultGraphTraversal : IGraphTraversal
         {
             foreach (var connection in connector.Connections)
             {
-                connectedNodes.Add(connection.Target.ParentNode);
+                 if(connection.Target?.ParentNode != null)
+                 {
+                    connectedNodes.Add(connection.Target.ParentNode);
+                 }
             }
         }
 
@@ -242,7 +315,10 @@ public class DefaultGraphTraversal : IGraphTraversal
         {
             foreach (var connection in connector.Connections)
             {
-                connectedNodes.Add(connection.Source.ParentNode);
+                 if(connection.Source?.ParentNode != null)
+                 {
+                    connectedNodes.Add(connection.Source.ParentNode);
+                 }
             }
         }
 
