@@ -8,9 +8,17 @@ using Nodify.Workflow.Core.Interfaces;
 namespace Nodify.Workflow.Core.Models;
 
 /// <summary>
-/// Manages the workflow graph structure, including nodes and connections.
-/// Provides thread-safe operations for modifying and validating the graph.
+/// Provides a default, thread-safe implementation of the <see cref="IGraph"/> interface.
+/// Manages the workflow graph structure, including nodes and connections, using concurrent collections and locking for atomic modifications.
 /// </summary>
+/// <remarks>
+/// This implementation uses <see cref="ConcurrentDictionary{TKey, TValue}"/> for efficient read operations and basic thread safety.
+/// A dedicated lock (<c>_modificationLock</c>) is used to ensure atomicity for complex operations like adding/removing nodes and connections,
+/// preventing race conditions and maintaining graph consistency.
+/// Methods like <c>TryAddNode</c>, <c>TryRemoveNode</c>, <c>TryAddConnection</c>, and <c>TryRemoveConnection</c>
+/// provide detailed results via <see cref="OperationResult{T}"/>, which is recommended for robust error handling.
+/// The simpler wrapper methods (<c>AddNode</c>, <c>RemoveNode</c>, etc.) return booleans or null on failure.
+/// </remarks>
 public class Graph : IGraph
 {
     // Concurrent dictionaries for thread-safe read operations and add/remove attempts.
@@ -27,18 +35,39 @@ public class Graph : IGraph
     }
 
     /// <inheritdoc />
-    // Expose collections as ReadOnly to prevent external modification.
-    // Note: ToList() creates a snapshot; the returned collection won't reflect subsequent changes.
+    /// <remarks>
+    /// Provides a snapshot of the nodes at the time of access. The returned collection is read-only
+    /// and will not reflect subsequent modifications to the graph.
+    /// </remarks>
     public IReadOnlyCollection<INode> Nodes => _nodesById.Values.ToList().AsReadOnly();
 
     /// <inheritdoc />
+    /// <remarks>
+    /// Provides a snapshot of the connections at the time of access. The returned collection is read-only
+    /// and will not reflect subsequent modifications to the graph.
+    /// </remarks>
     public IReadOnlyCollection<IConnection> Connections => _connectionsById.Values.ToList().AsReadOnly();
 
     /// <summary>
-    /// Attempts to add a node to the graph.
+    /// Attempts to add a node to the graph in a thread-safe manner.
     /// </summary>
-    /// <param name="node">The node to add.</param>
-    /// <returns>An <see cref="OperationResult{INode}"/> indicating success or failure.</returns>
+    /// <param name="node">The node to add. Must not be null and should have a unique ID.</param>
+    /// <returns>An <see cref="OperationResult{INode}"/> indicating success (with the added node) or failure (with an error message).</returns>
+    /// <example>
+    /// <code>
+    /// var graph = new Graph();
+    /// var node = new MyCustomNode(); // Assuming MyCustomNode implements INode
+    /// var result = graph.TryAddNode(node);
+    /// if (result.Success)
+    /// {
+    ///     Console.WriteLine($"Node {result.Result.Id} added successfully.");
+    /// }
+    /// else
+    /// {
+    ///     Console.WriteLine($"Failed to add node: {result.ErrorMessage}");
+    /// }
+    /// </code>
+    /// </example>
     public OperationResult<INode> TryAddNode(INode node)
     {
         if (node == null)
@@ -53,6 +82,10 @@ public class Graph : IGraph
     }
 
     /// <inheritdoc />
+    /// <remarks>
+    /// This is a convenience wrapper for <see cref="TryAddNode"/>. It returns true on success and false on failure,
+    /// discarding detailed error information. Use <see cref="TryAddNode"/> for more control over error handling.
+    /// </remarks>
     public bool AddNode(INode node)
     {
         // Simple wrapper for convenience, discards detailed error message.
@@ -60,11 +93,25 @@ public class Graph : IGraph
     }
 
     /// <summary>
-    /// Attempts to remove a node and all its associated connections from the graph.
-    /// This operation is performed atomically using a lock.
+    /// Attempts to remove a node and all its associated connections from the graph atomically.
+    /// This operation acquires a lock to ensure consistency.
     /// </summary>
-    /// <param name="node">The node to remove.</param>
-    /// <returns>An <see cref="OperationResult{Boolean}"/> indicating success or failure.</returns>
+    /// <param name="node">The node to remove. Must not be null.</param>
+    /// <returns>An <see cref="OperationResult{Boolean}"/> indicating success or failure, with an error message on failure.</returns>
+    /// <example>
+    /// <code>
+    /// // Assumes graph and node exist
+    /// var result = graph.TryRemoveNode(nodeToRemove);
+    /// if (result.Success)
+    /// {
+    ///     Console.WriteLine("Node and its connections removed.");
+    /// }
+    /// else
+    /// {
+    ///     Console.WriteLine($"Failed to remove node: {result.ErrorMessage}");
+    /// }
+    /// </code>
+    /// </example>
     public OperationResult<bool> TryRemoveNode(INode node)
     {
         if (node == null)
@@ -108,12 +155,20 @@ public class Graph : IGraph
     }
 
     /// <inheritdoc />
+    /// <remarks>
+    /// This is a convenience wrapper for <see cref="TryRemoveNode"/>. It returns true on success and false on failure,
+    /// discarding detailed error information.
+    /// </remarks>
     public bool RemoveNode(INode node)
     {
         return TryRemoveNode(node).Success;
     }
 
     /// <inheritdoc />
+    /// <remarks>
+    /// Retrieves a node by its ID using a thread-safe dictionary lookup.
+    /// Returns null if no node with the specified ID is found.
+    /// </remarks>
     public INode GetNodeById(Guid id)
     {
         _nodesById.TryGetValue(id, out var node);
@@ -121,14 +176,30 @@ public class Graph : IGraph
     }
 
     /// <summary>
-    /// Attempts to add a connection between two connectors.
-    /// Performs validation (direction, type compatibility, node existence, circular reference) 
-    /// before creating and adding the connection.
-    /// Uses a lock for the final check and modification step.
+    /// Attempts to add a connection between two connectors, performing validation and ensuring atomicity.
+    /// Performs checks for null arguments, connector directions, type compatibility, node existence within the graph,
+    /// and potential circular references before attempting to create and add the connection.
+    /// Uses a lock during the final validation and modification steps to prevent race conditions.
     /// </summary>
-    /// <param name="sourceConnector">The source (output) connector.</param>
-    /// <param name="targetConnector">The target (input) connector.</param>
-    /// <returns>An <see cref="OperationResult{IConnection}"/> containing the new connection or an error message.</returns>
+    /// <param name="sourceConnector">The source (output) connector. Must belong to a node within this graph.</param>
+    /// <param name="targetConnector">The target (input) connector. Must belong to a node within this graph.</param>
+    /// <returns>An <see cref="OperationResult{IConnection}"/> containing the new connection on success, or an error message on failure.</returns>
+    /// <example>
+    /// <code>
+    /// // Assumes graph, sourceNode, targetNode, sourceConnector, targetConnector exist
+    /// graph.AddNode(sourceNode);
+    /// graph.AddNode(targetNode);
+    /// var result = graph.TryAddConnection(sourceConnector, targetConnector);
+    /// if (result.Success)
+    /// {
+    ///     Console.WriteLine($"Connection {result.Result.Id} added successfully.");
+    /// }
+    /// else
+    /// {
+    ///     Console.WriteLine($"Failed to add connection: {result.ErrorMessage}");
+    /// }
+    /// </code>
+    /// </example>
     public OperationResult<IConnection> TryAddConnection(IConnector sourceConnector, IConnector targetConnector)
     {
         // --- Initial argument checks ---
@@ -203,6 +274,10 @@ public class Graph : IGraph
     }
 
     /// <inheritdoc />
+    /// <remarks>
+    /// This is a convenience wrapper for <see cref="TryAddConnection"/>. It returns the created <see cref="IConnection"/>
+    /// on success and null on failure, discarding detailed error information.
+    /// </remarks>
     public IConnection AddConnection(IConnector sourceConnector, IConnector targetConnector)
     {
         var result = TryAddConnection(sourceConnector, targetConnector);
@@ -211,11 +286,12 @@ public class Graph : IGraph
     }
 
     /// <summary>
-    /// Attempts to remove a connection from the graph.
-    /// Uses a lock for atomicity.
+    /// Attempts to remove a connection from the graph atomically.
+    /// This involves removing the connection from the graph's collection and invoking the connection's <see cref="IConnection.Remove"/> method
+    /// to detach it from its source and target connectors. Uses a lock for consistency.
     /// </summary>
-    /// <param name="connection">The connection to remove.</param>
-    /// <returns>An <see cref="OperationResult{Boolean}"/> indicating success or failure.</returns>
+    /// <param name="connection">The connection to remove. Must not be null.</param>
+    /// <returns>An <see cref="OperationResult{Boolean}"/> indicating success or failure, with an error message on failure.</returns>
     public OperationResult<bool> TryRemoveConnection(IConnection connection)
     {
         if (connection == null)
@@ -243,6 +319,10 @@ public class Graph : IGraph
     }
 
     /// <inheritdoc />
+    /// <remarks>
+    /// This is a convenience wrapper for <see cref="TryRemoveConnection"/>. It returns true on success and false on failure,
+    /// discarding detailed error information.
+    /// </remarks>
     public bool RemoveConnection(IConnection connection)
     {
         return TryRemoveConnection(connection).Success;
@@ -273,6 +353,17 @@ public class Graph : IGraph
     }
 
     /// <inheritdoc />
+    /// <remarks>
+    /// Performs a comprehensive validation of the graph's current state.
+    /// Checks include:
+    /// <list type="bullet">
+    /// <item><description>Ensuring all connections link valid nodes currently present in the graph.</description></item>
+    /// <item><description>Ensuring connections link connectors that still belong to their parent nodes.</description></item>
+    /// <item><description>Invoking the <see cref="IConnection.Validate"/> method for each connection.</description></item>
+    /// <item><description>Invoking the <see cref="INode.Validate"/> method for each node.</description></item>
+    /// </list>
+    /// Returns true only if all checks pass for all nodes and connections.
+    /// </remarks>
     public bool Validate()
     {
         return TryValidate().Success;

@@ -37,8 +37,8 @@ This document restructures the development milestones to follow a Test-Driven De
 - [x] Refactor implementation for clarity and performance
   - [x] Improved circular reference detection
   - [x] Enhanced connection validation
-- [ ] Document API with examples
-- [ ] Create usage examples for graph model
+- [x] Document API with examples
+- [x] Create usage examples for graph model
 - [x] Review test coverage and add tests for edge cases
 
 ### Milestone 1.2: Execution Engine (Week 2)
