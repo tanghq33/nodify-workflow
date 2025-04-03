@@ -1,5 +1,8 @@
 using System;
 using System.Collections.Generic;
+using Nodify.Workflow.Core.Execution;
+using Nodify.Workflow.Core.Execution.Context;
+using System.Threading.Tasks;
 
 namespace Nodify.Workflow.Core.Interfaces;
 
@@ -57,4 +60,11 @@ public interface INode
     /// </summary>
     /// <returns>True if the node is in a valid state</returns>
     bool Validate();
+
+    /// <summary>
+    /// Executes the node's logic asynchronously within the specified execution context.
+    /// </summary>
+    /// <param name="context">The execution context.</param>
+    /// <returns>A task representing the asynchronous operation, yielding the execution result.</returns>
+    Task<NodeExecutionResult> ExecuteAsync(IExecutionContext context);
 }

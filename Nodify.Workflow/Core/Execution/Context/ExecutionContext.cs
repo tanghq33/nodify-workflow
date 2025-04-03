@@ -10,7 +10,7 @@ namespace Nodify.Workflow.Core.Execution.Context
     /// </summary>
     public class ExecutionContext : IExecutionContext
     {
-        private readonly Dictionary<string, object> _variables = new();
+        private readonly Dictionary<string, object?> _variables = new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase);
         private readonly List<string> _logs = new List<string>();
         private Guid? _currentNodeId;
         private ExecutionStatus _currentStatus = ExecutionStatus.NotStarted;
@@ -43,7 +43,7 @@ namespace Nodify.Workflow.Core.Execution.Context
         /// </summary>
         /// <param name="key">The case-insensitive key of the variable.</param>
         /// <param name="value">The value to store.</param>
-        public void SetVariable(string key, object value)
+        public void SetVariable(string key, object? value)
         {
             if (string.IsNullOrWhiteSpace(key))
             {
@@ -77,14 +77,33 @@ namespace Nodify.Workflow.Core.Execution.Context
         {
             if (string.IsNullOrWhiteSpace(key))
             {
-                throw new ArgumentException("Variable key cannot be null or whitespace.", nameof(key));
+                value = default;
+                return false;
             }
 
-            if (_variables.TryGetValue(key, out var objValue) && objValue is T typedValue)
+            if (_variables.TryGetValue(key, out var objValue))
             {
-                value = typedValue;
-                return true;
+                if (objValue == null)
+                {
+                    if (default(T) != null)
+                    {
+                        value = default;
+                        return false;
+                    }
+                    else
+                    {
+                        value = default;
+                        return true;
+                    }
+                }
+
+                if (objValue is T typedValue)
+                {
+                    value = typedValue;
+                    return true;
+                }
             }
+
             value = default;
             return false;
         }
@@ -153,8 +172,13 @@ namespace Nodify.Workflow.Core.Execution.Context
         /// </summary>
         /// <param name="key">The case-insensitive key of the variable.</param>
         /// <param name="value">The value to store.</param>
-        public void AddVariable(string key, object value)
+        public void AddVariable(string key, object? value)
         {
+            if (string.IsNullOrWhiteSpace(key))
+            {
+                throw new ArgumentException("Variable key cannot be null or whitespace.", nameof(key));
+            }
+
             if (_variables.ContainsKey(key))
             {
                 throw new ArgumentException($"Variable with key '{key}' already exists.", nameof(key));
@@ -166,7 +190,7 @@ namespace Nodify.Workflow.Core.Execution.Context
         /// Gets all variables from the execution context.
         /// </summary>
         /// <returns>A read-only dictionary of all variables.</returns>
-        public IReadOnlyDictionary<string, object> GetAllVariables()
+        public IReadOnlyDictionary<string, object?> GetAllVariables()
         {
             return _variables;
         }

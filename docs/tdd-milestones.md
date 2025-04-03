@@ -41,7 +41,7 @@ This document restructures the development milestones to follow a Test-Driven De
 - [x] Create usage examples for graph model
 - [x] Review test coverage and add tests for edge cases
 
-### Milestone 1.2: Execution Engine (Week 2)
+### Milestone 1.2: Execution Context and Core Graph Traversal
 
 #### Day 1-2: Execution Engine Test Suite
 - [x] Write tests for ExecutionContext state management

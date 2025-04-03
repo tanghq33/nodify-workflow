@@ -86,6 +86,6 @@ namespace Nodify.Workflow.Core.Execution.Context
         /// Gets all variables in the execution context.
         /// </summary>
         /// <returns>A read-only dictionary containing all variables.</returns>
-        IReadOnlyDictionary<string, object> GetAllVariables();
+        IReadOnlyDictionary<string, object?> GetAllVariables();
     }
 } 

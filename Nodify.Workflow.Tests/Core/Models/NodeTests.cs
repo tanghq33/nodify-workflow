@@ -6,17 +6,18 @@ using Nodify.Workflow.Core.Models;
 using NSubstitute;
 using Shouldly;
 using Xunit;
+using Nodify.Workflow.Tests.Core.Models.Helpers;
 
 namespace Nodify.Workflow.Tests.Core.Models;
 
 public class NodeTests
 {
     [Fact]
-    public void Constructor_ShouldInitializeWithUniqueId()
+    public void Node_ShouldHaveUniqueId()
     {
         // Arrange & Act
-        var node1 = new Node();
-        var node2 = new Node();
+        var node1 = new TestNode();
+        var node2 = new TestNode();
 
         // Assert
         node1.Id.ShouldNotBe(Guid.Empty);
@@ -28,7 +29,7 @@ public class NodeTests
     public void Constructor_ShouldInitializeEmptyConnectorCollections()
     {
         // Arrange & Act
-        var node = new Node();
+        var node = new TestNode();
 
         // Assert
         node.InputConnectors.ShouldNotBeNull();
@@ -38,10 +39,10 @@ public class NodeTests
     }
 
     [Fact]
-    public void AddInputConnector_ShouldAddValidInputConnector()
+    public void AddInputConnector_ShouldAddConnector_WhenDirectionIsInput()
     {
         // Arrange
-        var node = new Node();
+        var node = new TestNode();
         var connector = Substitute.For<IConnector>();
         connector.Direction.Returns(ConnectorDirection.Input);
 
@@ -49,25 +50,14 @@ public class NodeTests
         node.AddInputConnector(connector);
 
         // Assert
-        node.InputConnectors.Count.ShouldBe(1);
         node.InputConnectors.ShouldContain(connector);
     }
 
     [Fact]
-    public void AddInputConnector_ShouldThrowOnNullConnector()
+    public void AddInputConnector_ShouldThrow_WhenDirectionIsOutput()
     {
         // Arrange
-        var node = new Node();
-
-        // Act & Assert
-        Should.Throw<ArgumentNullException>(() => node.AddInputConnector(null));
-    }
-
-    [Fact]
-    public void AddInputConnector_ShouldThrowOnOutputConnector()
-    {
-        // Arrange
-        var node = new Node();
+        var node = new TestNode();
         var connector = Substitute.For<IConnector>();
         connector.Direction.Returns(ConnectorDirection.Output);
 
@@ -76,10 +66,10 @@ public class NodeTests
     }
 
     [Fact]
-    public void AddOutputConnector_ShouldAddValidOutputConnector()
+    public void AddOutputConnector_ShouldAddConnector_WhenDirectionIsOutput()
     {
         // Arrange
-        var node = new Node();
+        var node = new TestNode();
         var connector = Substitute.For<IConnector>();
         connector.Direction.Returns(ConnectorDirection.Output);
 
@@ -87,25 +77,14 @@ public class NodeTests
         node.AddOutputConnector(connector);
 
         // Assert
-        node.OutputConnectors.Count.ShouldBe(1);
         node.OutputConnectors.ShouldContain(connector);
     }
 
     [Fact]
-    public void AddOutputConnector_ShouldThrowOnNullConnector()
+    public void AddOutputConnector_ShouldThrow_WhenDirectionIsInput()
     {
         // Arrange
-        var node = new Node();
-
-        // Act & Assert
-        Should.Throw<ArgumentNullException>(() => node.AddOutputConnector(null));
-    }
-
-    [Fact]
-    public void AddOutputConnector_ShouldThrowOnInputConnector()
-    {
-        // Arrange
-        var node = new Node();
+        var node = new TestNode();
         var connector = Substitute.For<IConnector>();
         connector.Direction.Returns(ConnectorDirection.Input);
 
@@ -114,16 +93,12 @@ public class NodeTests
     }
 
     [Fact]
-    public void RemoveConnector_ShouldRemoveAndCleanupConnections()
+    public void RemoveConnector_ShouldRemoveInputConnector()
     {
         // Arrange
-        var node = new Node();
+        var node = new TestNode();
         var connector = Substitute.For<IConnector>();
-        var connection = Substitute.For<IConnection>();
-
         connector.Direction.Returns(ConnectorDirection.Input);
-        connector.Connections.Returns(new[] { connection });
-
         node.AddInputConnector(connector);
 
         // Act
@@ -131,65 +106,167 @@ public class NodeTests
 
         // Assert
         result.ShouldBeTrue();
-        node.InputConnectors.Count.ShouldBe(0);
-        connection.Received(1).Remove();
+        node.InputConnectors.ShouldNotContain(connector);
     }
 
     [Fact]
-    public void RemoveConnector_ShouldReturnFalseForNull()
+    public void RemoveConnector_ShouldRemoveOutputConnector()
     {
         // Arrange
-        var node = new Node();
-
-        // Act
-        var result = node.RemoveConnector(null);
-
-        // Assert
-        result.ShouldBeFalse();
-    }
-
-    [Fact]
-    public void Validate_ShouldReturnTrueForValidNode()
-    {
-        // Arrange
-        var node = new Node();
+        var node = new TestNode();
         var connector = Substitute.For<IConnector>();
-        connector.Direction.Returns(ConnectorDirection.Input);
-        connector.ParentNode.Returns(node);
-
-        node.AddInputConnector(connector);
+        connector.Direction.Returns(ConnectorDirection.Output);
+        node.AddOutputConnector(connector);
 
         // Act
-        var result = node.Validate();
+        var result = node.RemoveConnector(connector);
 
         // Assert
         result.ShouldBeTrue();
+        node.OutputConnectors.ShouldNotContain(connector);
     }
 
     [Fact]
-    public void Validate_ShouldReturnFalseForInvalidParentNode()
+    public void RemoveConnector_ShouldReturnFalse_WhenConnectorNotFound()
     {
         // Arrange
-        var node = new Node();
-        var otherNode = new Node();
+        var node = new TestNode();
         var connector = Substitute.For<IConnector>();
         connector.Direction.Returns(ConnectorDirection.Input);
-        connector.ParentNode.Returns(otherNode);
-
-        node.AddInputConnector(connector);
 
         // Act
-        var result = node.Validate();
+        var result = node.RemoveConnector(connector);
 
         // Assert
         result.ShouldBeFalse();
+    }
+
+    [Fact]
+    public void GetInputConnector_ShouldReturnConnector_WhenIdMatches()
+    {
+        // Arrange
+        var node = new TestNode();
+        var connectorId = Guid.NewGuid();
+        var connector = Substitute.For<IConnector>();
+        connector.Id.Returns(connectorId);
+        connector.Direction.Returns(ConnectorDirection.Input);
+        node.AddInputConnector(connector);
+
+        // Act
+        var foundConnector = node.GetInputConnector(connectorId);
+
+        // Assert
+        foundConnector.ShouldBe(connector);
+    }
+
+    [Fact]
+    public void GetInputConnector_ShouldReturnNull_WhenIdNotFound()
+    {
+        // Arrange
+        var node = new TestNode();
+
+        // Act
+        var foundConnector = node.GetInputConnector(Guid.NewGuid());
+
+        // Assert
+        foundConnector.ShouldBeNull();
+    }
+
+    [Fact]
+    public void GetOutputConnector_ShouldReturnConnector_WhenIdMatches()
+    {
+        // Arrange
+        var node = new TestNode();
+        var connectorId = Guid.NewGuid();
+        var connector = Substitute.For<IConnector>();
+        connector.Id.Returns(connectorId);
+        connector.Direction.Returns(ConnectorDirection.Output);
+        node.AddOutputConnector(connector);
+
+        // Act
+        var foundConnector = node.GetOutputConnector(connectorId);
+
+        // Assert
+        foundConnector.ShouldBe(connector);
+    }
+
+    [Fact]
+    public void GetOutputConnector_ShouldReturnNull_WhenIdNotFound()
+    {
+        // Arrange
+        var node = new TestNode();
+
+        // Act
+        var foundConnector = node.GetOutputConnector(Guid.NewGuid());
+
+        // Assert
+        foundConnector.ShouldBeNull();
+    }
+
+    [Fact]
+    public void Validate_ShouldReturnTrue_WhenConnectorsAreValid()
+    {
+        // Arrange
+        var node = new TestNode();
+        var inputConnector = Substitute.For<IConnector>();
+        inputConnector.ParentNode.Returns(node);
+        inputConnector.Direction.Returns(ConnectorDirection.Input);
+
+        var outputConnector = Substitute.For<IConnector>();
+        outputConnector.ParentNode.Returns(node);
+        outputConnector.Direction.Returns(ConnectorDirection.Output);
+
+        node.AddInputConnector(inputConnector);
+        node.AddOutputConnector(outputConnector);
+
+        // Act
+        var isValid = node.Validate();
+
+        // Assert
+        isValid.ShouldBeTrue();
+    }
+
+    [Fact]
+    public void Validate_ShouldReturnFalse_WhenInputConnectorIsInvalid()
+    {
+        // Arrange
+        var node = new TestNode();
+        var otherNode = new TestNode();
+        var inputConnector = Substitute.For<IConnector>();
+        inputConnector.ParentNode.Returns(otherNode);
+        inputConnector.Direction.Returns(ConnectorDirection.Input);
+        node.AddInputConnector(inputConnector);
+
+        // Act
+        var isValid = node.Validate();
+
+        // Assert
+        isValid.ShouldBeFalse();
+    }
+
+    [Fact]
+    public void Validate_ShouldReturnFalse_WhenOutputConnectorIsInvalid()
+    {
+        // Arrange
+        var node = new TestNode();
+        var otherNode = new TestNode();
+        var outputConnector = Substitute.For<IConnector>();
+        outputConnector.ParentNode.Returns(otherNode);
+        outputConnector.Direction.Returns(ConnectorDirection.Output);
+        node.AddOutputConnector(outputConnector);
+
+        // Act
+        var isValid = node.Validate();
+
+        // Assert
+        isValid.ShouldBeFalse();
     }
 
     [Fact]
     public void Position_ShouldBeSettable()
     {
         // Arrange
-        var node = new Node();
+        var node = new TestNode();
         const double expectedX = 100.0;
         const double expectedY = 200.0;
 

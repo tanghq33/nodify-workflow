@@ -2,19 +2,29 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Nodify.Workflow.Core.Interfaces;
+using Nodify.Workflow.Core.Execution;
+using Nodify.Workflow.Core.Execution.Context;
+using System.Threading.Tasks;
 
 namespace Nodify.Workflow.Core.Models;
 
 /// <summary>
-/// Base implementation of a workflow node
+/// Represents a base implementation for a node in the workflow graph.
+/// Provides basic functionality for managing connectors and node properties.
 /// </summary>
-public class Node : INode
+public abstract class Node : INode
 {
-    private readonly List<IConnector> _inputConnectors;
-    private readonly List<IConnector> _outputConnectors;
+    /// <inheritdoc />
+    public Guid Id { get; } = Guid.NewGuid();
 
     /// <inheritdoc />
-    public Guid Id { get; }
+    public double X { get; set; }
+
+    /// <inheritdoc />
+    public double Y { get; set; }
+
+    private readonly List<IConnector> _inputConnectors = new List<IConnector>();
+    private readonly List<IConnector> _outputConnectors = new List<IConnector>();
 
     /// <inheritdoc />
     public IReadOnlyCollection<IConnector> InputConnectors => _inputConnectors.AsReadOnly();
@@ -23,64 +33,69 @@ public class Node : INode
     public IReadOnlyCollection<IConnector> OutputConnectors => _outputConnectors.AsReadOnly();
 
     /// <inheritdoc />
-    public double X { get; set; }
-
-    /// <inheritdoc />
-    public double Y { get; set; }
-
-    public Node()
+    public virtual void AddInputConnector(IConnector connector)
     {
-        Id = Guid.NewGuid();
-        _inputConnectors = new List<IConnector>();
-        _outputConnectors = new List<IConnector>();
-    }
-
-    /// <inheritdoc />
-    public void AddInputConnector(IConnector connector)
-    {
-        if (connector == null)
-            throw new ArgumentNullException(nameof(connector));
-
         if (connector.Direction != ConnectorDirection.Input)
-            throw new ArgumentException("Connector must be an input connector", nameof(connector));
-
+            throw new ArgumentException("Connector must be an input connector.", nameof(connector));
         _inputConnectors.Add(connector);
     }
 
     /// <inheritdoc />
-    public void AddOutputConnector(IConnector connector)
+    public virtual void AddOutputConnector(IConnector connector)
     {
-        if (connector == null)
-            throw new ArgumentNullException(nameof(connector));
-
         if (connector.Direction != ConnectorDirection.Output)
-            throw new ArgumentException("Connector must be an output connector", nameof(connector));
-
+            throw new ArgumentException("Connector must be an output connector.", nameof(connector));
         _outputConnectors.Add(connector);
     }
 
     /// <inheritdoc />
     public bool RemoveConnector(IConnector connector)
     {
-        if (connector == null)
-            return false;
-
-        // Remove all connections from the connector before removing it
-        foreach (var connection in connector.Connections.ToList())
+        if (connector.Direction == ConnectorDirection.Input)
         {
-            connection.Remove();
+            return _inputConnectors.Remove(connector);
         }
-
-        return connector.Direction == ConnectorDirection.Input
-            ? _inputConnectors.Remove(connector)
-            : _outputConnectors.Remove(connector);
+        else
+        {
+            return _outputConnectors.Remove(connector);
+        }
     }
 
     /// <inheritdoc />
-    public bool Validate()
+    public IConnector? GetInputConnector(Guid id)
     {
-        // Basic validation - ensure all connectors are valid
-        return InputConnectors.All(c => c != null && c.ParentNode == this)
-            && OutputConnectors.All(c => c != null && c.ParentNode == this);
+        return _inputConnectors.FirstOrDefault(c => c.Id == id);
+    }
+
+    /// <inheritdoc />
+    public IConnector? GetOutputConnector(Guid id)
+    {
+        return _outputConnectors.FirstOrDefault(c => c.Id == id);
+    }
+
+    /// <inheritdoc />
+    public virtual bool Validate()
+    {
+        // Base validation: Ensure all connectors belong to this node.
+        // Derived classes should override and potentially add more checks.
+        bool inputsValid = InputConnectors.All(c => c != null && c.ParentNode == this);
+        bool outputsValid = OutputConnectors.All(c => c != null && c.ParentNode == this);
+        return inputsValid && outputsValid;
+    }
+
+    /// <inheritdoc />
+    public abstract Task<NodeExecutionResult> ExecuteAsync(IExecutionContext context);
+
+    // Obsolete methods kept for reference or potential future adjustments
+    [Obsolete("Use RemoveConnector instead.")]
+    public virtual void RemoveInputConnector(IConnector connector)
+    {
+         _inputConnectors.Remove(connector);
+    }
+
+    [Obsolete("Use RemoveConnector instead.")]
+    public virtual void RemoveOutputConnector(IConnector connector)
+    {
+        _outputConnectors.Remove(connector);
     }
 }

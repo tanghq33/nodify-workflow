@@ -16,22 +16,13 @@ public class DefaultNodeExecutor : INodeExecutor
     {
         try
         {
-            // START: Temporary TDD Simulation Logic (Moved from WorkflowRunner)
-            if (node.GetType().Name == "FailureNode") // Check type name as it's internal to tests
-            {
-                 var nodeError = new InvalidOperationException($"Simulated failure in node {node.Id} ({node.GetType().Name}).");
-                 return NodeExecutionResult.Failed(nodeError);
-            }
-            else
-            {
-                await Task.Delay(1); // Simulate async work for success nodes
-                return NodeExecutionResult.Succeeded();
-            }
-            // END: Temporary TDD Simulation Logic
+            // Removed Temporary TDD Simulation Logic
+            // Directly call the node's execution logic
+            return await node.ExecuteAsync(context);
         }
         catch(Exception ex)
         {
-             // Catch unexpected errors during the (simulated) execution
+             // Catch unexpected errors during node execution
              return NodeExecutionResult.Failed(ex);
         }
     }
