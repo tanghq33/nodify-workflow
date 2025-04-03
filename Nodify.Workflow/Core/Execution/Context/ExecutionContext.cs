@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Diagnostics.CodeAnalysis;
+using System.Collections.Concurrent;
 
 namespace Nodify.Workflow.Core.Execution.Context
 {
@@ -14,6 +15,7 @@ namespace Nodify.Workflow.Core.Execution.Context
         private readonly List<string> _logs = new List<string>();
         private Guid? _currentNodeId;
         private ExecutionStatus _currentStatus = ExecutionStatus.NotStarted;
+        private readonly ConcurrentDictionary<Guid, object?> _outputConnectorValues = new();
 
         /// <summary>
         /// Gets the unique identifier for this execution context.
@@ -75,36 +77,47 @@ namespace Nodify.Workflow.Core.Execution.Context
         /// <returns>true if the key was found and the value could be cast to type T; otherwise, false.</returns>
         public bool TryGetVariable<T>(string key, out T? value)
         {
+            value = default;
             if (string.IsNullOrWhiteSpace(key))
             {
-                value = default;
                 return false;
             }
 
             if (_variables.TryGetValue(key, out var objValue))
             {
-                if (objValue == null)
-                {
-                    if (default(T) != null)
-                    {
-                        value = default;
-                        return false;
-                    }
-                    else
-                    {
-                        value = default;
-                        return true;
-                    }
-                }
-
                 if (objValue is T typedValue)
                 {
                     value = typedValue;
                     return true;
                 }
+                // Handle case where value exists but is wrong type or null
+                // If T is a value type and objValue is null, should return false.
+                if (objValue == null && default(T) != null)
+                {
+                    return false;
+                }
+                // Try conversion if types don't match directly but might be convertible
+                try
+                {
+                    // Allow null propagation if T is nullable
+                    value = (T?)Convert.ChangeType(objValue, typeof(T)); 
+                    // Check if conversion resulted in null when T is a non-nullable value type
+                    if (value == null && default(T) != null) return false;
+                    return true;
+                }
+                catch (InvalidCastException)
+                {
+                    return false;
+                }
+                catch (FormatException)
+                {
+                    return false;
+                }
+                catch(ArgumentNullException) // ChangeType throws this if value is null and T is a value type
+                {
+                    return false;
+                }
             }
-
-            value = default;
             return false;
         }
 
@@ -159,11 +172,21 @@ namespace Nodify.Workflow.Core.Execution.Context
         /// <returns>The result of the condition evaluation.</returns>
         public bool EvaluateCondition(string condition)
         {
-             if (TryGetVariable<bool>(condition, out var boolValue))
-             {
-                 return boolValue;
-             }
-            System.Diagnostics.Debug.WriteLine($"Warning: Condition evaluation for '{condition}' not fully implemented.");
+            // Attempt to get the variable directly as an object
+            if (_variables.TryGetValue(condition, out var objValue))
+            {
+                // Check if the retrieved value is actually a boolean
+                if (objValue is bool boolValue)
+                {
+                    return boolValue;
+                }
+                // Variable exists but is not a boolean type
+                 System.Diagnostics.Debug.WriteLine($"Warning: Condition variable '{condition}' is not a boolean type ({objValue?.GetType().Name ?? "null"}). Evaluating as false.");
+                return false;
+            }
+            
+            // Variable does not exist
+            System.Diagnostics.Debug.WriteLine($"Warning: Condition variable '{condition}' not found. Evaluating as false.");
             return false;
         }
 
@@ -193,6 +216,31 @@ namespace Nodify.Workflow.Core.Execution.Context
         public IReadOnlyDictionary<string, object?> GetAllVariables()
         {
             return _variables;
+        }
+
+        // Implementation for output connector values
+        public void SetOutputConnectorValue(Guid outputConnectorId, object? value)
+        {
+            if (outputConnectorId == Guid.Empty)
+            {
+                throw new ArgumentException("Output connector ID cannot be empty.", nameof(outputConnectorId));
+            }
+            _outputConnectorValues[outputConnectorId] = value;
+        }
+
+        public object? GetOutputConnectorValue(Guid outputConnectorId)
+        {
+            if (outputConnectorId == Guid.Empty)
+            {
+                return null; // Or throw?
+            }
+            _outputConnectorValues.TryGetValue(outputConnectorId, out var value);
+            return value;
+        }
+
+        public void ClearOutputConnectorValues()
+        {
+            _outputConnectorValues.Clear();
         }
     }
 } 

@@ -39,7 +39,7 @@ namespace Nodify.Workflow.Core.Execution.Context
         /// <param name="key">The case-insensitive key of the variable.</param>
         /// <param name="value">When this method returns, contains the value associated with the specified key, if the key is found and the value can be cast to type T; otherwise, the default value for type T.</param>
         /// <returns>true if the key was found and the value could be cast to type T; otherwise, false.</returns>
-         bool TryGetVariable<T>(string key, out T? value);
+        bool TryGetVariable<T>(string key, out T? value);
 
         /// <summary>
         /// Sets the current execution status.
@@ -65,10 +65,10 @@ namespace Nodify.Workflow.Core.Execution.Context
         /// <param name="nodeId">The Guid of the current node.</param>
         void SetCurrentNode(Guid nodeId);
 
-         /// <summary>
+        /// <summary>
         /// Resets the current node ID (e.g., when execution finishes or between steps).
         /// </summary>
-         void ClearCurrentNode();
+        void ClearCurrentNode();
 
         /// <summary>
         /// Placeholder for evaluating conditions based on context variables.
@@ -87,5 +87,24 @@ namespace Nodify.Workflow.Core.Execution.Context
         /// </summary>
         /// <returns>A read-only dictionary containing all variables.</returns>
         IReadOnlyDictionary<string, object?> GetAllVariables();
+
+        /// <summary>
+        /// Sets the value of an output data connector.
+        /// </summary>
+        /// <param name="outputConnectorId">The ID of the output data connector.</param>
+        /// <param name="value">The value to set for the output data connector.</param>
+        void SetOutputConnectorValue(Guid outputConnectorId, object? value);
+
+        /// <summary>
+        /// Gets the value of an output data connector.
+        /// </summary>
+        /// <param name="outputConnectorId">The ID of the output data connector.</param>
+        /// <returns>The value of the output data connector, or null if the connector is not found.</returns>
+        object? GetOutputConnectorValue(Guid outputConnectorId);
+
+        /// <summary>
+        /// Clears all output data connectors.
+        /// </summary>
+        void ClearOutputConnectorValues();
     }
 } 
