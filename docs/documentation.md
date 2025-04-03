@@ -75,7 +75,7 @@ public class Connector : IConnector
 
 #### 3. Graph Traversal Implementation
 
-The `GraphTraversal` service implements various traversal algorithms:
+The `DefaultGraphTraversal` service implements various traversal algorithms:
 
 **Depth-First Search (DFS)**
 - Used for: Deep exploration, cycle detection
@@ -83,14 +83,19 @@ The `GraphTraversal` service implements various traversal algorithms:
 - Time complexity: O(V + E)
 
 **Breadth-First Search (BFS)**
-- Used for: Level-wise traversal, shortest paths
+- Used for: Level-wise traversal, shortest paths (edge count)
 - Implementation: Queue-based with visited set
 - Time complexity: O(V + E)
 
 **Topological Sort**
 - Used for: Execution order determination
-- Implementation: DFS with reverse post-order
+- Implementation: DFS with reverse post-order, throws on cycle detection
 - Time complexity: O(V + E)
+
+**Find All Simple Paths**
+- Used for: Finding all paths between two nodes without repeating nodes.
+- Implementation: Recursive DFS with path tracking and visited set per path.
+- Time complexity: Can be exponential in the worst case (O(V! * E) or similar for dense graphs with many paths), but often faster for typical DAGs.
 
 ### Resource Management
 

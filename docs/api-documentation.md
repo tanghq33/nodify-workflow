@@ -205,14 +205,26 @@ traversal.DepthFirstTraversal(startNode, node => {
 ### Finding Paths
 
 ```csharp
-// Find shortest path between nodes
-var path = traversal.FindShortestPath(startNode, endNode);
-if (path.Count > 0)
+// Find shortest path between nodes (by edge count)
+var shortestPath = traversal.FindShortestPath(startNode, endNode);
+if (shortestPath.Count > 0)
 {
-    Console.WriteLine("Path found:");
-    foreach (var node in path)
+    Console.WriteLine("Shortest path found:");
+    foreach (var node in shortestPath)
     {
         Console.WriteLine($"-> {node.Id}");
+    }
+}
+
+// Find ALL simple paths between nodes (no repeated nodes in a path)
+var allPaths = traversal.FindAllSimplePaths(startNode, endNode);
+Console.WriteLine($"Found {allPaths.Count()} simple paths:");
+foreach (var path in allPaths)
+{
+    Console.WriteLine("Path:");
+    foreach (var node in path)
+    {
+        Console.WriteLine($"  -> {node.Id}");
     }
 }
 
