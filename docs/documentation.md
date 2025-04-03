@@ -23,7 +23,6 @@
   - Links output connector to input connector
   - Maintains bidirectional relationships
   - Validates connection validity
-  - Detects circular references
 
 ### Design Decisions
 
@@ -103,9 +102,9 @@ The `GraphTraversal` service implements various traversal algorithms:
 - Cleanup ensures both endpoints are properly updated
 
 #### 2. Circular Reference Detection
-- Implemented using depth-first search
-- Prevents creation of cycles when needed
-- Supports cycle detection for validation
+- Implemented in the `Graph` class using depth-first search.
+- Prevents creation of connections that would form a cycle (`Graph.TryAddConnection`).
+- Supports full graph cycle detection for validation (`Graph.TryValidate`).
 
 ### Thread Safety Considerations
 
@@ -163,8 +162,7 @@ The current implementation is not thread-safe by default. When using in a multi-
 
 1. No built-in thread safety
 2. Memory overhead from bidirectional relationships
-3. Potential for reference cycles
-4. Limited support for dynamic type validation
+3. Limited support for dynamic type validation
 
 ## Future Considerations
 

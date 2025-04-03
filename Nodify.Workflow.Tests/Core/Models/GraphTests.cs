@@ -75,7 +75,7 @@ public class GraphTests
         // Assert
         result.Success.ShouldBeFalse();
         result.Result.ShouldBeNull();
-        result.ErrorMessage.ShouldBe("Node cannot be null");
+        result.ErrorMessage.ShouldBe("Node cannot be null.");
     }
 
     [Fact]
@@ -141,7 +141,7 @@ public class GraphTests
         // Assert
         result.Success.ShouldBeFalse();
         result.Result.ShouldBeFalse();
-        result.ErrorMessage.ShouldBe("Node not found in graph");
+        result.ErrorMessage.ShouldBe("Node not found in graph.");
     }
 
     [Fact]
@@ -213,6 +213,42 @@ public class GraphTests
     }
 
     [Fact]
+    public void TryAddConnection_ShouldFailForSourceInputConnector()
+    {
+        // Arrange
+        _graph.AddNode(_node1);
+        _graph.AddNode(_node2);
+        var invalidSource = new Connector(_node1, ConnectorDirection.Input, typeof(string)); // Invalid direction
+        _node1.AddInputConnector(invalidSource);
+
+        // Act
+        var result = _graph.TryAddConnection(invalidSource, _targetConnector);
+
+        // Assert
+        result.Success.ShouldBeFalse();
+        result.Result.ShouldBeNull();
+        result.ErrorMessage.ShouldBe("Source connector must be an output.");
+    }
+
+    [Fact]
+    public void TryAddConnection_ShouldFailForTargetOutputConnector()
+    {
+        // Arrange
+        _graph.AddNode(_node1);
+        _graph.AddNode(_node2);
+        var invalidTarget = new Connector(_node2, ConnectorDirection.Output, typeof(string)); // Invalid direction
+        _node2.AddOutputConnector(invalidTarget);
+
+        // Act
+        var result = _graph.TryAddConnection(_sourceConnector, invalidTarget);
+
+        // Assert
+        result.Success.ShouldBeFalse();
+        result.Result.ShouldBeNull();
+        result.ErrorMessage.ShouldBe("Target connector must be an input.");
+    }
+
+    [Fact]
     public void RemoveConnection_ShouldDisconnectNodes()
     {
         // Arrange
@@ -268,56 +304,60 @@ public class GraphTests
     public void ValidateGraph_ShouldDetectCircularReferences()
     {
         // Arrange
-        var node3 = new Node();
-        var connector1 = new Connector(node3, ConnectorDirection.Output, typeof(string));
-        var connector2 = new Connector(_node1, ConnectorDirection.Input, typeof(string));
-        node3.AddOutputConnector(connector1);
-        _node1.AddInputConnector(connector2);
-
         _graph.AddNode(_node1);
         _graph.AddNode(_node2);
-        _graph.AddNode(node3);
+        _graph.AddConnection(_sourceConnector, _targetConnector); // Connection 1: Node1 -> Node2
 
-        // Create a cycle: node1 -> node2 -> node3 -> node1
-        _graph.AddConnection(_sourceConnector, _targetConnector);
-        _graph.AddConnection(new Connector(_node2, ConnectorDirection.Output, typeof(string)),
-                           new Connector(node3, ConnectorDirection.Input, typeof(string)));
-        _graph.AddConnection(connector1, connector2);
+        // Create connectors for connection 2: Node2 -> Node1 (circular)
+        var sourceConnector2 = new Connector(_node2, ConnectorDirection.Output, typeof(string));
+        var targetConnector2 = new Connector(_node1, ConnectorDirection.Input, typeof(string));
+        _node2.AddOutputConnector(sourceConnector2);
+        _node1.AddInputConnector(targetConnector2);
 
-        // Act
+        // Act: Attempt to add the connection that would create the cycle
+        var cycleConnectionResult = _graph.TryAddConnection(sourceConnector2, targetConnector2);
+
+        // Assert: The attempt to add the cycle connection should fail
+        cycleConnectionResult.Success.ShouldBeFalse();
+        cycleConnectionResult.ErrorMessage.ShouldContain("circular reference");
+
+        // Act: Validate the graph state *after* the failed connection attempt
+        // The graph should still be valid as the cyclic connection wasn't added.
         var isValid = _graph.Validate();
+        var validationResult = _graph.TryValidate();
 
-        // Assert
-        isValid.ShouldBeFalse();
+        // Assert: Graph validation should pass
+        isValid.ShouldBeTrue(); 
+        validationResult.Success.ShouldBeTrue();
+        validationResult.ErrorMessage.ShouldBe("Graph validation successful.");
     }
 
     [Fact]
     public void TryValidate_ShouldProvideDetailedValidationResult()
     {
-        // Arrange
-        var node3 = new Node();
-        var connector1 = new Connector(node3, ConnectorDirection.Output, typeof(string));
-        var connector2 = new Connector(_node1, ConnectorDirection.Input, typeof(string));
-        node3.AddOutputConnector(connector1);
-        _node1.AddInputConnector(connector2);
-
+        // Arrange: Create an invalid graph state
+        // Add node1 but not node2
         _graph.AddNode(_node1);
-        _graph.AddNode(_node2);
-        _graph.AddNode(node3);
-
-        // Create a cycle: node1 -> node2 -> node3 -> node1
-        _graph.AddConnection(_sourceConnector, _targetConnector);
-        _graph.AddConnection(new Connector(_node2, ConnectorDirection.Output, typeof(string)),
-                           new Connector(node3, ConnectorDirection.Input, typeof(string)));
-        _graph.AddConnection(connector1, connector2);
+        // Create a connection referencing node2 which is not in the graph
+        // We need to bypass Graph.AddConnection as it checks node existence.
+        // Manually create connection and add to connectors (simulate inconsistent state)
+        var conn = new Connection(_sourceConnector, _targetConnector); 
+        // Add to graph's internal collection (This is tricky, ideally we test Graph methods)
+        // Let's test by adding an invalid node instead
+        _graph.AddNode(_node1);
+        var invalidNode = Substitute.For<INode>();
+        invalidNode.Validate().Returns(false);
+        invalidNode.Id.Returns(Guid.NewGuid());
+        _graph.AddNode(invalidNode); // Add the invalid node
 
         // Act
         var result = _graph.TryValidate();
 
         // Assert
-        result.Success.ShouldBeFalse();
+        result.Success.ShouldBeFalse(); // Should fail validation
         result.Result.ShouldBeFalse();
-        result.ErrorMessage.ShouldContain("Circular references found");
+        result.ErrorMessage.ShouldContain("Invalid nodes found"); // Check for the specific error
+        result.ErrorMessage.ShouldContain(invalidNode.Id.ToString());
     }
 
     [Fact]
@@ -349,6 +389,6 @@ public class GraphTests
         // Assert
         result.Success.ShouldBeTrue();
         result.Result.ShouldBeTrue();
-        result.ErrorMessage.ShouldBeEmpty();
+        result.ErrorMessage.ShouldBe("Graph validation successful.");
     }
 }

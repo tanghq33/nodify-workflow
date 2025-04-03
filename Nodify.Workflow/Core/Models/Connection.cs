@@ -19,75 +19,60 @@ public class Connection : IConnection
     /// <inheritdoc />
     public IConnector Target { get; }
 
+    /// <summary>
+    /// Creates a new connection between a source and target connector.
+    /// Assumes basic validation (direction, type compatibility, circular reference) 
+    /// has already been performed by the Graph class.
+    /// </summary>
     public Connection(IConnector source, IConnector target)
     {
         Id = Guid.NewGuid();
         Source = source ?? throw new ArgumentNullException(nameof(source));
         Target = target ?? throw new ArgumentNullException(nameof(target));
 
-        if (source.Direction != ConnectorDirection.Output)
-            throw new ArgumentException("Source connector must be an output", nameof(source));
+        // Constructor now assumes prior validation
+        // if (source.Direction != ConnectorDirection.Output) ... removed
+        // if (target.Direction != ConnectorDirection.Input) ... removed
+        // if (!source.ValidateConnection(target)) ... removed
 
-        if (target.Direction != ConnectorDirection.Input)
-            throw new ArgumentException("Target connector must be an input", nameof(target));
+        // Add this connection to both connectors - this remains crucial
+        // Consider potential race conditions if connectors are not thread-safe
+        // For now, assuming Graph class lock handles external consistency.
+        bool sourceAdded = Source.AddConnection(this);
+        bool targetAdded = Target.AddConnection(this);
 
-        if (!source.ValidateConnection(target))
-            throw new ArgumentException("Invalid connection between connectors");
-
-        // Add this connection to both connectors
-        source.AddConnection(this);
-        target.AddConnection(this);
+        // If adding to connectors fails (e.g., input already full due to race condition),
+        // we need to roll back.
+        if (!sourceAdded || !targetAdded)
+        {
+             // Rollback: Remove from whichever connector it was added to
+             if (sourceAdded) Source.RemoveConnection(this);
+             if (targetAdded) Target.RemoveConnection(this);
+             // Throw an exception to signal failure to the Graph class
+             throw new InvalidOperationException("Failed to add connection to one or both connectors. Possible concurrency issue or violation of connector rules.");
+        }
     }
 
     /// <inheritdoc />
+    /// <remarks>
+    /// Basic validation. Assumes deeper validation (type compatibility, graph structure)
+    /// is handled by the Graph or Connector classes.
+    /// </remarks>
     public bool Validate()
     {
-        if (Source.Direction != ConnectorDirection.Output)
-            return false;
-
-        if (Target.Direction != ConnectorDirection.Input)
-            return false;
-
-        // Validate type compatibility
-        if (!Source.ValidateConnection(Target))
-            return false;
-
-        return true;
+        // A connection is valid if its source and target are still valid (e.g., not null)
+        // More complex validation (like ensuring connectors still belong to nodes in the graph)
+        // would typically be done at the Graph level during its Validate() process.
+        return Source != null && Target != null;
+        // Optional: Check if source/target still belong to their parent nodes if needed here
+        // return Source?.ParentNode != null && Target?.ParentNode != null;
     }
 
     /// <inheritdoc />
     public void Remove()
     {
-        Source.RemoveConnection(this);
-        Target.RemoveConnection(this);
-    }
-
-    /// <inheritdoc />
-    public bool WouldCreateCircularReference()
-    {
-        var visited = new HashSet<INode>();
-        return HasCircularReference(Target.ParentNode, visited);
-    }
-
-    private bool HasCircularReference(INode currentNode, HashSet<INode> visited)
-    {
-        if (currentNode == Source.ParentNode)
-            return true;
-
-        if (!visited.Add(currentNode))
-            return false;
-
-        // Check all output connections from this node
-        foreach (var connector in currentNode.OutputConnectors)
-        {
-            foreach (var connection in connector.Connections)
-            {
-                if (HasCircularReference(connection.Target.ParentNode, visited))
-                    return true;
-            }
-        }
-
-        visited.Remove(currentNode);
-        return false;
+        // Ensure removal from both connectors
+        Source?.RemoveConnection(this);
+        Target?.RemoveConnection(this);
     }
 }

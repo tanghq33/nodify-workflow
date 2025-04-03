@@ -65,29 +65,48 @@ public class Connector : IConnector
         if (other == null)
             return false;
 
-        // Check direction compatibility
+        // Connection must be between an Input and an Output connector
         if (Direction == other.Direction)
             return false;
 
-        // Check data type compatibility
-        if (!IsTypeCompatible(other.DataType))
+        // Determine source (output) and target (input) based on direction
+        IConnector source = Direction == ConnectorDirection.Output ? this : other;
+        IConnector target = Direction == ConnectorDirection.Input ? this : other;
+
+        // Check data type compatibility: target must be assignable from source
+        if (!IsTypeCompatible(source.DataType, target.DataType))
             return false;
 
-        // For input connectors, only allow one connection
-        if (Direction == ConnectorDirection.Input && Connections.Count > 0)
-            return false;
+        // Input connectors constraints (e.g., allow only one connection)
+        if (target.Direction == ConnectorDirection.Input && target.Connections.Count > 0)
+        {
+            // Check if the existing connection involves the same source
+            // Allows reconnecting the same source, but prevents multiple different sources.
+            if (target.Connections.Any(c => c.Source != source))
+            {
+                return false;
+            }
+        }
+
+        // Output connectors constraints (if any in the future, e.g., max connections)
+        // if (source.Direction == ConnectorDirection.Output && source.Connections.Count >= MaxOutputConnections)
+        //     return false;
 
         return true;
     }
 
-    private bool IsTypeCompatible(Type otherType)
+    /// <summary>
+    /// Checks if the target data type is assignable from the source data type.
+    /// </summary>
+    /// <param name="sourceType">The data type of the source (output) connector.</param>
+    /// <param name="targetType">The data type of the target (input) connector.</param>
+    /// <returns>True if the types are compatible for connection.</returns>
+    private bool IsTypeCompatible(Type sourceType, Type targetType)
     {
-        if (otherType == null)
+        if (sourceType == null || targetType == null)
             return false;
 
-        // Check if types match exactly or if there's an inheritance relationship
-        return DataType == otherType ||
-               DataType.IsAssignableFrom(otherType) ||
-               otherType.IsAssignableFrom(DataType);
+        // Target type must be assignable from source type (e.g., target is base class or interface)
+        return targetType.IsAssignableFrom(sourceType);
     }
 }

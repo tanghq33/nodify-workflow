@@ -120,30 +120,61 @@ public interface IConnection
     
     bool Validate();
     void Remove();
-    bool WouldCreateCircularReference();
 }
 ```
 
 #### Example: Managing Connections
 
 ```csharp
-// Create connection
-var connection = new Connection(output, input);
+// Use Graph class to manage connections and check for cycles
+var graph = new Graph();
+graph.AddNode(node1);
+graph.AddNode(node2);
 
-// Check for validity
-if (!connection.Validate())
+var addResult = graph.TryAddConnection(output, input);
+
+if (addResult.Success)
 {
-    // Handle invalid connection
+    var connection = addResult.Result;
+    Console.WriteLine($"Connection {connection.Id} added.");
+
+    // Check validity (basic check on connection itself)
+    if (!connection.Validate())
+    {
+        // Handle invalid connection state (e.g., source/target became null)
+    }
+
+    // Remove connection using graph
+    graph.RemoveConnection(connection);
+}
+else
+{
+    // Handle connection failure (e.g., cycle detected, invalid types, node not found)
+    Console.WriteLine($"Failed to add connection: {addResult.ErrorMessage}");
+}
+```
+
+### 3. Validation
+
+```csharp
+// GOOD: Use Graph methods for connection creation and validation
+var graph = new Graph();
+graph.AddNode(node1);
+graph.AddNode(node2);
+var addResult = graph.TryAddConnection(output, input);
+
+if (!addResult.Success)
+{
+    // Handle errors (type mismatch, cycle detected, etc.)
+    Console.WriteLine($"Validation/Connection failed: {addResult.ErrorMessage}");
 }
 
-// Check for cycles
-if (connection.WouldCreateCircularReference())
+// GOOD: Use Graph validation for overall integrity
+var validationResult = graph.TryValidate();
+if (!validationResult.Success)
 {
-    // Handle circular reference
+     Console.WriteLine($"Graph validation failed: {validationResult.ErrorMessage}");
 }
-
-// Remove connection
-connection.Remove();
 ```
 
 ## Graph Traversal
@@ -229,16 +260,23 @@ connector.RemoveConnection(connection);
 ### 3. Validation
 
 ```csharp
-// GOOD: Validate before creating connections
-if (output.ValidateConnection(input))
+// GOOD: Use Graph methods for connection creation and validation
+var graph = new Graph();
+graph.AddNode(node1);
+graph.AddNode(node2);
+var addResult = graph.TryAddConnection(output, input);
+
+if (!addResult.Success)
 {
-    var connection = new Connection(output, input);
+    // Handle errors (type mismatch, cycle detected, etc.)
+    Console.WriteLine($"Validation/Connection failed: {addResult.ErrorMessage}");
 }
 
-// GOOD: Check for cycles
-if (!connection.WouldCreateCircularReference())
+// GOOD: Use Graph validation for overall integrity
+var validationResult = graph.TryValidate();
+if (!validationResult.Success)
 {
-    // Proceed with connection
+     Console.WriteLine($"Graph validation failed: {validationResult.ErrorMessage}");
 }
 ```
 

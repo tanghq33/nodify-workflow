@@ -32,10 +32,4 @@ public interface IConnection
     /// Removes this connection from its source and target connectors
     /// </summary>
     void Remove();
-
-    /// <summary>
-    /// Checks if this connection would create a circular reference in the graph
-    /// </summary>
-    /// <returns>True if the connection would create a circular reference</returns>
-    bool WouldCreateCircularReference();
 }

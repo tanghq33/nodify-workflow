@@ -103,20 +103,6 @@ public class IConnectionTests
     }
 
     [Fact]
-    public void Connection_ShouldPreventCircularReferences()
-    {
-        // Arrange
-        var connection = Substitute.For<IConnection>();
-        connection.WouldCreateCircularReference().Returns(true);
-
-        // Act
-        var result = connection.WouldCreateCircularReference();
-
-        // Assert
-        result.ShouldBeTrue();
-    }
-
-    [Fact]
     public void Connection_ShouldHaveUniqueIdentifier()
     {
         // Arrange
