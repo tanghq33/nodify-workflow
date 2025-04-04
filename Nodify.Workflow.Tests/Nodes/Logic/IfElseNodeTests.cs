@@ -98,7 +98,7 @@ public class IfElseNodeTests
         });
 
         // Act
-        var result = await _node.ExecuteAsync(_context, CancellationToken.None);
+        var result = await _node.ExecuteAsync(_context, null, CancellationToken.None);
 
         // Assert
         result.Success.ShouldBeTrue();
@@ -115,7 +115,7 @@ public class IfElseNodeTests
         });
 
         // Act
-        var result = await _node.ExecuteAsync(_context, CancellationToken.None);
+        var result = await _node.ExecuteAsync(_context, null, CancellationToken.None);
 
         // Assert
         result.Success.ShouldBeTrue();
@@ -134,7 +134,7 @@ public class IfElseNodeTests
         });
 
         // Act
-        var result = await _node.ExecuteAsync(_context, CancellationToken.None);
+        var result = await _node.ExecuteAsync(_context, null, CancellationToken.None);
 
         // Assert
         result.Success.ShouldBeTrue();
@@ -153,7 +153,7 @@ public class IfElseNodeTests
         });
 
         // Act
-        var result = await _node.ExecuteAsync(_context, CancellationToken.None);
+        var result = await _node.ExecuteAsync(_context, null, CancellationToken.None);
 
         // Assert
         result.Success.ShouldBeTrue(); // Node execution itself succeeded
@@ -170,7 +170,7 @@ public class IfElseNodeTests
         _node.ConditionLogic = logic;
 
         // Act
-        var result = await _node.ExecuteAsync(_context, CancellationToken.None);
+        var result = await _node.ExecuteAsync(_context, null, CancellationToken.None);
 
         // Assert
         result.Success.ShouldBeTrue();
@@ -188,7 +188,7 @@ public class IfElseNodeTests
         _node.ConditionLogic = logic;
 
         // Act
-        var result = await _node.ExecuteAsync(_context, CancellationToken.None);
+        var result = await _node.ExecuteAsync(_context, null, CancellationToken.None);
 
         // Assert
         result.Success.ShouldBeTrue();
@@ -203,7 +203,7 @@ public class IfElseNodeTests
         _node.InputVariableName = " "; // Empty
 
         // Act
-        var result = await _node.ExecuteAsync(_context, CancellationToken.None);
+        var result = await _node.ExecuteAsync(_context, null, CancellationToken.None);
 
         // Assert
         result.Success.ShouldBeFalse();
@@ -222,7 +222,7 @@ public class IfElseNodeTests
         _context.TryGetVariable<object>("WrongName", out outVar).Returns(false);
 
         // Act
-        var result = await _node.ExecuteAsync(_context, CancellationToken.None);
+        var result = await _node.ExecuteAsync(_context, null, CancellationToken.None);
 
         // Assert
         result.Success.ShouldBeFalse();
@@ -240,7 +240,7 @@ public class IfElseNodeTests
         });
 
         // Act
-        var result = await _node.ExecuteAsync(_context, CancellationToken.None);
+        var result = await _node.ExecuteAsync(_context, null, CancellationToken.None);
 
         // Assert
         result.Success.ShouldBeFalse();
@@ -261,7 +261,7 @@ public class IfElseNodeTests
         });
 
         // Act
-        var result = await _node.ExecuteAsync(_context, CancellationToken.None);
+        var result = await _node.ExecuteAsync(_context, null, CancellationToken.None);
 
         // Assert
         result.Success.ShouldBeFalse();
@@ -293,7 +293,7 @@ public class IfElseNodeTests
         _node.ConditionLogic = ConditionCombinationLogic.Or;
 
         // Act
-        var result = await _node.ExecuteAsync(_context, CancellationToken.None);
+        var result = await _node.ExecuteAsync(_context, null, CancellationToken.None);
 
         // Assert
         result.Success.ShouldBeTrue();
@@ -313,7 +313,7 @@ public class IfElseNodeTests
         _node.ConditionLogic = ConditionCombinationLogic.Or;
 
         // Act
-        var result = await _node.ExecuteAsync(_context, CancellationToken.None);
+        var result = await _node.ExecuteAsync(_context, null, CancellationToken.None);
 
         // Assert
         result.Success.ShouldBeTrue();
@@ -333,7 +333,7 @@ public class IfElseNodeTests
         _node.ConditionLogic = ConditionCombinationLogic.Or;
 
         // Act
-        var result = await _node.ExecuteAsync(_context, CancellationToken.None);
+        var result = await _node.ExecuteAsync(_context, null, CancellationToken.None);
 
         // Assert
         result.Success.ShouldBeTrue();

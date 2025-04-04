@@ -27,8 +27,8 @@ public class EndNodeTests
         // Assert
         attribute.ShouldNotBeNull();
         attribute.DisplayName.ShouldBe("End");
-        attribute.Category.ShouldBe("Flow Control");
-        attribute.Description.ShouldBe("Marks the termination point of a workflow path.");
+        attribute.Category.ShouldBe("Flow");
+        attribute.Description.ShouldBe("The ending point of the workflow.");
     }
 
     [Fact]
@@ -58,7 +58,7 @@ public class EndNodeTests
         var cancellationToken = CancellationToken.None;
 
         // Act
-        var result = await node.ExecuteAsync(context, cancellationToken);
+        var result = await node.ExecuteAsync(context, null, cancellationToken);
 
         // Assert
         result.Success.ShouldBeTrue();

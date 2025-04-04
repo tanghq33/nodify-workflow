@@ -15,7 +15,8 @@ public interface INodeExecutor
     /// </summary>
     /// <param name="node">The node to execute.</param>
     /// <param name="context">The current execution context.</param>
+    /// <param name="inputData">Optional data passed directly from the preceding node.</param>
     /// <param name="cancellationToken">Token to monitor for cancellation requests.</param>
     /// <returns>A task representing the asynchronous execution, yielding a NodeExecutionResult.</returns>
-    Task<NodeExecutionResult> ExecuteAsync(INode node, IExecutionContext context, CancellationToken cancellationToken);
+    Task<NodeExecutionResult> ExecuteAsync(INode node, IExecutionContext context, object? inputData, CancellationToken cancellationToken);
 } 

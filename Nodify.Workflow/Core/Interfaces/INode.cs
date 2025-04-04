@@ -65,8 +65,9 @@ public interface INode
     /// <summary>
     /// Executes the node's logic asynchronously.
     /// </summary>
-    /// <param name="context">The execution context.</param>
-    /// <param name="cancellationToken">Token to monitor for cancellation requests.</param>
-    /// <returns>A task representing the asynchronous operation, yielding the execution result.</returns>
-    Task<NodeExecutionResult> ExecuteAsync(IExecutionContext context, CancellationToken cancellationToken);
+    /// <param name="context">The execution context containing shared state.</param>
+    /// <param name="inputData">Optional data passed directly from the preceding node that activated this node.</param>
+    /// <param name="cancellationToken">A token to signal cancellation of the operation.</param>
+    /// <returns>A task representing the asynchronous operation, returning a <see cref="NodeExecutionResult"/>.</returns>
+    Task<NodeExecutionResult> ExecuteAsync(IExecutionContext context, object? inputData, CancellationToken cancellationToken);
 }

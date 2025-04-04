@@ -29,7 +29,7 @@ public class GetVariableNodeTests
         attribute.ShouldNotBeNull();
         attribute.DisplayName.ShouldBe("Get Variable");
         attribute.Category.ShouldBe("Data");
-        attribute.Description.ShouldBe("Retrieves a variable from the workflow context.");
+        attribute.Description.ShouldBe("Retrieves a variable from the execution context and outputs it.");
     }
 
     [Fact]
@@ -82,7 +82,7 @@ public class GetVariableNodeTests
         var valueOutputId = valueOutputConnector.Id;
 
         // Act
-        var result = await node.ExecuteAsync(context, cancellationToken);
+        var result = await node.ExecuteAsync(context, null, cancellationToken);
 
         // Assert
         context.Received(1).TryGetVariable<object>("TestVar", out outValue);
@@ -104,7 +104,7 @@ public class GetVariableNodeTests
         context.TryGetVariable<object>("MissingVar", out outValue).Returns(false);
 
         // Act
-        var result = await node.ExecuteAsync(context, cancellationToken);
+        var result = await node.ExecuteAsync(context, null, cancellationToken);
 
         // Assert
         context.Received(1).TryGetVariable<object>("MissingVar", out outValue);
@@ -125,7 +125,7 @@ public class GetVariableNodeTests
         var cancellationToken = CancellationToken.None;
 
         // Act
-        var result = await node.ExecuteAsync(context, cancellationToken);
+        var result = await node.ExecuteAsync(context, null, cancellationToken);
 
         // Assert
         context.DidNotReceive().TryGetVariable<object>(Arg.Any<string>(), out Arg.Any<object?>());

@@ -29,7 +29,7 @@ public class SetVariableNodeTests
         attribute.ShouldNotBeNull();
         attribute.DisplayName.ShouldBe("Set Variable");
         attribute.Category.ShouldBe("Data");
-        attribute.Description.ShouldBe("Sets or updates a variable in the workflow context.");
+        attribute.Description.ShouldBe("Sets or updates a variable in the execution context.");
     }
 
     [Fact]
@@ -54,13 +54,13 @@ public class SetVariableNodeTests
     public async Task ExecuteAsync_ValidInput_ShouldSetVariableAndSucceed()
     {
         // Arrange
-        var node = new SetVariableNode { VariableName = "TestVar", ValueToSet = 123 };
+        var node = new SetVariableNode { VariableName = "TestVar", Value = 123 };
         var expectedOutputConnectorId = node.OutputConnectors.First().Id;
         var context = Substitute.For<IExecutionContext>();
         var cancellationToken = CancellationToken.None;
 
         // Act
-        var result = await node.ExecuteAsync(context, cancellationToken);
+        var result = await node.ExecuteAsync(context, null, cancellationToken);
 
         // Assert
         context.Received(1).SetVariable("TestVar", 123);
@@ -73,13 +73,13 @@ public class SetVariableNodeTests
     public async Task ExecuteAsync_NullValue_ShouldSetVariableAndSucceed()
     {
         // Arrange
-        var node = new SetVariableNode { VariableName = "TestVar", ValueToSet = null };
+        var node = new SetVariableNode { VariableName = "TestVar", Value = null };
         var expectedOutputConnectorId = node.OutputConnectors.First().Id;
         var context = Substitute.For<IExecutionContext>();
         var cancellationToken = CancellationToken.None;
 
         // Act
-        var result = await node.ExecuteAsync(context, cancellationToken);
+        var result = await node.ExecuteAsync(context, null, cancellationToken);
 
         // Assert
         context.Received(1).SetVariable("TestVar", null);
@@ -92,12 +92,12 @@ public class SetVariableNodeTests
     public async Task ExecuteAsync_EmptyVariableName_ShouldFail()
     {
         // Arrange
-        var node = new SetVariableNode { VariableName = string.Empty, ValueToSet = 123 };
+        var node = new SetVariableNode { VariableName = string.Empty, Value = 123 };
         var context = Substitute.For<IExecutionContext>();
         var cancellationToken = CancellationToken.None;
 
         // Act
-        var result = await node.ExecuteAsync(context, cancellationToken);
+        var result = await node.ExecuteAsync(context, null, cancellationToken);
 
         // Assert
         result.Success.ShouldBeFalse();
@@ -112,7 +112,7 @@ public class SetVariableNodeTests
     public async Task ExecuteAsync_ContextSetVariableThrows_ShouldFail()
     {
         // Arrange
-        var node = new SetVariableNode { VariableName = "TestVar", ValueToSet = 123 };
+        var node = new SetVariableNode { VariableName = "TestVar", Value = 123 };
         var context = Substitute.For<IExecutionContext>();
         var expectedException = new ArgumentException("Test context error");
         context.When(x => x.SetVariable(Arg.Any<string>(), Arg.Any<object?>()))
@@ -120,7 +120,7 @@ public class SetVariableNodeTests
         var cancellationToken = CancellationToken.None;
 
         // Act
-        var result = await node.ExecuteAsync(context, cancellationToken);
+        var result = await node.ExecuteAsync(context, null, cancellationToken);
 
         // Assert
         result.Success.ShouldBeFalse();

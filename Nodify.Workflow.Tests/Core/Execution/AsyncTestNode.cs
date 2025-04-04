@@ -52,7 +52,7 @@ namespace Nodify.Workflow.Tests.Core.Execution
             AddOutputConnector(outputConnector);
         }
 
-        public override async Task<NodeExecutionResult> ExecuteAsync(IExecutionContext context, CancellationToken cancellationToken)
+        public override async Task<NodeExecutionResult> ExecuteAsync(IExecutionContext context, object? inputData, CancellationToken cancellationToken)
         {
             // Use the stored _nodeIdForContext for context variables
             context.SetVariable($"{_nodeIdForContext}_Started", true); // Mark start for verification

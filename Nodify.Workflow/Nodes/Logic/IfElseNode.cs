@@ -48,8 +48,10 @@ public class IfElseNode : Node
         AddOutputConnector(falseOut);
     }
 
-    public override Task<NodeExecutionResult> ExecuteAsync(IExecutionContext context, CancellationToken cancellationToken)
+    public override Task<NodeExecutionResult> ExecuteAsync(IExecutionContext context, object? inputData, CancellationToken cancellationToken)
     {
+        // InputData is ignored by IfElseNode as it primarily controls flow based on context variables.
+
         // 1. Validate Input Variable Name
         if (string.IsNullOrWhiteSpace(InputVariableName))
         {
@@ -121,7 +123,7 @@ public class IfElseNode : Node
             }
         }
 
-        // 4. Return result activating the correct branch
+        // 4. Return result activating the correct branch (no output data)
         Guid connectorToActivate = overallResult ? _trueOutputId : _falseOutputId;
         return Task.FromResult(NodeExecutionResult.Succeeded(connectorToActivate));
     }

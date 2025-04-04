@@ -85,7 +85,7 @@ public abstract class Node : INode
     }
 
     /// <inheritdoc />
-    public abstract Task<NodeExecutionResult> ExecuteAsync(IExecutionContext context, CancellationToken cancellationToken);
+    public abstract Task<NodeExecutionResult> ExecuteAsync(IExecutionContext context, object? inputData, CancellationToken cancellationToken);
 
     // Obsolete methods kept for reference or potential future adjustments
     [Obsolete("Use RemoveConnector instead.")]

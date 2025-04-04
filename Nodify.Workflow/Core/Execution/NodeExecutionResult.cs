@@ -7,36 +7,36 @@ public class NodeExecutionResult
     public bool Success { get; }
     public Exception? Error { get; }
     public Guid? ActivatedOutputConnectorId { get; }
+    public object? OutputData { get; }
 
-    public NodeExecutionResult(bool success, Exception? error = null, Guid? activatedOutputConnectorId = null)
+    public NodeExecutionResult(bool success, Exception? error = null, Guid? activatedOutputConnectorId = null, object? outputData = null)
     {
-        if (!success && error == null)
+        if (!success)
         {
-            throw new ArgumentNullException(nameof(error), "An error must be provided if execution was not successful.");
-        }
-        if (success && activatedOutputConnectorId == null && error == null)
-        {
-           // Allow successful completion without output activation (e.g., EndNode)
-        }
-        else if (success && activatedOutputConnectorId != null && error == null)
-        {
-            // Standard success with output activation
-        }
-        else if (!success && error != null && activatedOutputConnectorId == null)
-        { 
-            // Standard failure
+            if (error == null)
+                throw new ArgumentNullException(nameof(error), "An error must be provided if execution failed.");
+            if (activatedOutputConnectorId != null)
+                throw new ArgumentException("Cannot activate an output connector on failure.", nameof(activatedOutputConnectorId));
+            if (outputData != null)
+                throw new ArgumentException("Cannot have output data on failure.", nameof(outputData));
         }
         else
-        {   // Disallow invalid combinations (e.g. success with error, failure with activation)
-            throw new ArgumentException("Invalid combination of success, error, and activatedOutputConnectorId.");
+        {
+            if (error != null)
+                throw new ArgumentException("Cannot provide an error on success.", nameof(error));
+
+            if (activatedOutputConnectorId == null && outputData != null)
+                throw new ArgumentException("Cannot have output data without activating an output connector.", nameof(outputData));
         }
 
         Success = success;
         Error = error;
         ActivatedOutputConnectorId = activatedOutputConnectorId;
+        OutputData = outputData;
     }
 
-    public static NodeExecutionResult Succeeded() => new(true, null, null);
-    public static NodeExecutionResult Succeeded(Guid activatedOutputConnectorId) => new(true, null, activatedOutputConnectorId);
-    public static NodeExecutionResult Failed(Exception error) => new(false, error, null);
+    public static NodeExecutionResult Succeeded() => new(true, null, null, null);
+    public static NodeExecutionResult Succeeded(Guid activatedOutputConnectorId) => new(true, null, activatedOutputConnectorId, null);
+    public static NodeExecutionResult SucceededWithData(Guid activatedOutputConnectorId, object? outputData) => new(true, null, activatedOutputConnectorId, outputData);
+    public static NodeExecutionResult Failed(Exception error) => new(false, error, null, null);
 } 

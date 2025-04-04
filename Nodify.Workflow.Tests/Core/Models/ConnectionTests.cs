@@ -111,7 +111,7 @@ public class ConnectionTests
         target.Received(1).RemoveConnection(connection);
     }
 
-    private IConnector CreateInputConnector(INode node = null)
+    private IConnector CreateInputConnector(INode? node = null)
     {
         var connector = Substitute.For<IConnector>();
         connector.Direction.Returns(ConnectorDirection.Input);
@@ -122,7 +122,7 @@ public class ConnectionTests
         return connector;
     }
 
-    private IConnector CreateOutputConnector(INode node = null)
+    private IConnector CreateOutputConnector(INode? node = null)
     {
         var connector = Substitute.For<IConnector>();
         connector.Direction.Returns(ConnectorDirection.Output);

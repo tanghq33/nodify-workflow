@@ -14,28 +14,28 @@ namespace Nodify.Workflow.Tests.Core.Registry.Helpers;
 [WorkflowNode("Simple Node", "Test Category", "A basic runnable node.")]
 internal class SimpleRegisteredNode : Node
 {
-    public override Task<NodeExecutionResult> ExecuteAsync(IExecutionContext context, CancellationToken cancellationToken) 
+    public override Task<NodeExecutionResult> ExecuteAsync(IExecutionContext context, object? inputData, CancellationToken cancellationToken) 
         => Task.FromResult(NodeExecutionResult.Succeeded());
 }
 
 [WorkflowNode("Another Node", "Test Category")] // No description
 internal class AnotherRegisteredNode : Node
 {
-     public override Task<NodeExecutionResult> ExecuteAsync(IExecutionContext context, CancellationToken cancellationToken) 
+     public override Task<NodeExecutionResult> ExecuteAsync(IExecutionContext context, object? inputData, CancellationToken cancellationToken) 
         => Task.FromResult(NodeExecutionResult.Succeeded());
 }
 
 [WorkflowNode("Different Cat", "Other Category")]
 internal class DifferentCategoryNode : Node
 {
-     public override Task<NodeExecutionResult> ExecuteAsync(IExecutionContext context, CancellationToken cancellationToken) 
+     public override Task<NodeExecutionResult> ExecuteAsync(IExecutionContext context, object? inputData, CancellationToken cancellationToken) 
         => Task.FromResult(NodeExecutionResult.Succeeded());
 }
 
 // This node should NOT be discovered as it lacks the attribute
 internal class UnregisteredNode : Node
 {
-     public override Task<NodeExecutionResult> ExecuteAsync(IExecutionContext context, CancellationToken cancellationToken) 
+     public override Task<NodeExecutionResult> ExecuteAsync(IExecutionContext context, object? inputData, CancellationToken cancellationToken) 
         => Task.FromResult(NodeExecutionResult.Succeeded());
 }
 
@@ -52,7 +52,7 @@ internal class NodeWithParamConstructor : Node
 {
     private readonly int _value;
     public NodeWithParamConstructor(int value) { _value = value; }
-    public override Task<NodeExecutionResult> ExecuteAsync(IExecutionContext context, CancellationToken cancellationToken) 
+    public override Task<NodeExecutionResult> ExecuteAsync(IExecutionContext context, object? inputData, CancellationToken cancellationToken) 
         => Task.FromResult(NodeExecutionResult.Succeeded());
 }
 
@@ -73,6 +73,6 @@ internal class DirectlyImplementingNode : INode
     public void RemoveInputConnector(IConnector connector) => throw new NotImplementedException();
     public void RemoveOutputConnector(IConnector connector) => throw new NotImplementedException();
     public bool Validate() => true;
-    public Task<NodeExecutionResult> ExecuteAsync(IExecutionContext context, CancellationToken cancellationToken) 
+    public Task<NodeExecutionResult> ExecuteAsync(IExecutionContext context, object? inputData, CancellationToken cancellationToken) 
         => Task.FromResult(NodeExecutionResult.Succeeded());
 } 

@@ -19,9 +19,10 @@ public class DefaultNodeExecutor : INodeExecutor
     /// </summary>
     /// <param name="node">The node to execute.</param>
     /// <param name="context">The current execution context.</param>
+    /// <param name="inputData">Optional data passed directly from the preceding node.</param>
     /// <param name="cancellationToken">Token to monitor for cancellation requests.</param>
     /// <returns>The result of the node's execution.</returns>
-    public async Task<NodeExecutionResult> ExecuteAsync(INode node, IExecutionContext context, CancellationToken cancellationToken)
+    public async Task<NodeExecutionResult> ExecuteAsync(INode node, IExecutionContext context, object? inputData, CancellationToken cancellationToken)
     {
         if (node == null)
             throw new ArgumentNullException(nameof(node));
@@ -31,13 +32,13 @@ public class DefaultNodeExecutor : INodeExecutor
         try
         {
             // Removed Temporary TDD Simulation Logic
-            // Directly call the node's execution logic
-            return await node.ExecuteAsync(context, cancellationToken);
+            // Directly call the node's execution logic, passing inputData
+            return await node.ExecuteAsync(context, inputData, cancellationToken);
         }
-        catch(Exception ex)
+        catch (Exception ex)
         {
-             // Catch unexpected errors during node execution
-             return NodeExecutionResult.Failed(ex);
+            // Catch unexpected errors during node execution
+            return NodeExecutionResult.Failed(ex);
         }
     }
 } 

@@ -27,7 +27,7 @@ public class StartNodeTests
         // Assert
         attribute.ShouldNotBeNull();
         attribute.DisplayName.ShouldBe("Start");
-        attribute.Category.ShouldBe("Flow Control");
+        attribute.Category.ShouldBe("Flow");
         attribute.Description.ShouldBe("The starting point of the workflow.");
     }
 
@@ -56,7 +56,7 @@ public class StartNodeTests
         var cancellationToken = CancellationToken.None;
 
         // Act
-        var result = await node.ExecuteAsync(context, cancellationToken);
+        var result = await node.ExecuteAsync(context, null, cancellationToken);
 
         // Assert
         result.Success.ShouldBeTrue();

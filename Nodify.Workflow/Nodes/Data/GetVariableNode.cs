@@ -11,7 +11,7 @@ using Nodify.Workflow.Core.Registry;
 
 namespace Nodify.Workflow.Nodes.Data;
 
-[WorkflowNode("Get Variable", "Data", Description = "Retrieves a variable from the workflow context.")]
+[WorkflowNode("Get Variable", "Data", Description = "Retrieves a variable from the execution context and outputs it.")]
 public class GetVariableNode : Node
 {
     // Configurable Property
@@ -40,24 +40,23 @@ public class GetVariableNode : Node
         AddOutputConnector(valueOut);
     }
 
-    public override Task<NodeExecutionResult> ExecuteAsync(IExecutionContext context, CancellationToken cancellationToken)
+    public override Task<NodeExecutionResult> ExecuteAsync(IExecutionContext context, object? inputData, CancellationToken cancellationToken)
     {
+        // InputData is ignored by GetVariableNode.
         if (string.IsNullOrWhiteSpace(VariableName))
         {
             return Task.FromResult(NodeExecutionResult.Failed(new InvalidOperationException("VariableName property cannot be empty.")));
         }
 
-        if (context.TryGetVariable<object>(VariableName, out var variableValue))
+        if (context.TryGetVariable<object>(VariableName, out var value))
         {
-            // Variable found, set the output connector value
-            context.SetOutputConnectorValue(_valueOutputId, variableValue);
-            
-            // Activate the standard flow output
+            // Set the output connector value in the context
+            context.SetOutputConnectorValue(_valueOutputId, value);
+            // Return success with the flow output connector activated
             return Task.FromResult(NodeExecutionResult.Succeeded(_flowOutputId));
         }
         else
         {
-            // Variable not found
             return Task.FromResult(NodeExecutionResult.Failed(new KeyNotFoundException($"Variable '{VariableName}' not found in the execution context.")));
         }
     }

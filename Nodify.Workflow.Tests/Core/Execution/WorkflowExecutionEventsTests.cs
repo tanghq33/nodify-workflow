@@ -36,7 +36,7 @@ internal class FailureNode : ITestNode
     public bool Validate() => true;
 
     // Implemented ExecuteAsync for FailureNode
-    public Task<NodeExecutionResult> ExecuteAsync(IExecutionContext context, CancellationToken cancellationToken)
+    public Task<NodeExecutionResult> ExecuteAsync(IExecutionContext context, object? inputData, CancellationToken cancellationToken)
     {
         var error = new InvalidOperationException($"Simulated failure in node {Id} ({GetType().Name}).");
         return Task.FromResult(NodeExecutionResult.Failed(error));
@@ -84,11 +84,11 @@ public class WorkflowExecutionEventsTests
     {
         var nodeA = Substitute.For<ITestNode>();
         nodeA.Id.Returns(Guid.NewGuid());
-        nodeA.ExecuteAsync(Arg.Any<IExecutionContext>(), Arg.Any<CancellationToken>()).Returns(Task.FromResult(NodeExecutionResult.Succeeded()));
+        nodeA.ExecuteAsync(Arg.Any<IExecutionContext>(), Arg.Any<object?>(), Arg.Any<CancellationToken>()).Returns(Task.FromResult(NodeExecutionResult.Succeeded()));
 
         var nodeB = Substitute.For<ITestNode>();
         nodeB.Id.Returns(Guid.NewGuid());
-        nodeB.ExecuteAsync(Arg.Any<IExecutionContext>(), Arg.Any<CancellationToken>()).Returns(Task.FromResult(NodeExecutionResult.Succeeded()));
+        nodeB.ExecuteAsync(Arg.Any<IExecutionContext>(), Arg.Any<object?>(), Arg.Any<CancellationToken>()).Returns(Task.FromResult(NodeExecutionResult.Succeeded()));
 
         mockTraversal.TopologicalSort(nodeA).Returns(new List<INode> { nodeA, nodeB });
         return (nodeA, nodeB);
@@ -98,7 +98,7 @@ public class WorkflowExecutionEventsTests
     {
         var nodeA = Substitute.For<ITestNode>();
         nodeA.Id.Returns(Guid.NewGuid());
-        nodeA.ExecuteAsync(Arg.Any<IExecutionContext>(), Arg.Any<CancellationToken>()).Returns(Task.FromResult(NodeExecutionResult.Succeeded()));
+        nodeA.ExecuteAsync(Arg.Any<IExecutionContext>(), Arg.Any<object?>(), Arg.Any<CancellationToken>()).Returns(Task.FromResult(NodeExecutionResult.Succeeded()));
 
         var nodeB = new FailureNode(); // FailureNode implements its own ExecuteAsync
 
@@ -114,7 +114,7 @@ public class WorkflowExecutionEventsTests
      {
          var nodeA = Substitute.For<ITestNode>();
          nodeA.Id.Returns(Guid.NewGuid());
-         nodeA.ExecuteAsync(Arg.Any<IExecutionContext>(), Arg.Any<CancellationToken>()).Returns(Task.FromResult(NodeExecutionResult.Succeeded()));
+         nodeA.ExecuteAsync(Arg.Any<IExecutionContext>(), Arg.Any<object?>(), Arg.Any<CancellationToken>()).Returns(Task.FromResult(NodeExecutionResult.Succeeded()));
 
          mockTraversal.TopologicalSort(nodeA).Returns(new List<INode> { nodeA });
          return nodeA;
@@ -128,7 +128,7 @@ public class WorkflowExecutionEventsTests
         var mockTraversal = Substitute.For<Nodify.Workflow.Core.Execution.IGraphTraversal>();
         var (nodeA, nodeB) = SetupLinearSuccessGraph(mockTraversal);
         var context = new Nodify.Workflow.Core.Execution.Context.ExecutionContext();
-        var runner = new WorkflowRunner(mockTraversal, new DefaultNodeExecutor());
+        var runner = new WorkflowRunner(new DefaultNodeExecutor(), mockTraversal);
         var recorder = new EventRecorder();
         recorder.Subscribe(runner);
 
@@ -161,7 +161,7 @@ public class WorkflowExecutionEventsTests
         var mockTraversal = Substitute.For<Nodify.Workflow.Core.Execution.IGraphTraversal>();
         var (nodeA, nodeB, nodeC) = SetupLinearFailureGraph(mockTraversal);
         var context = new Nodify.Workflow.Core.Execution.Context.ExecutionContext();
-        var runner = new WorkflowRunner(mockTraversal, new DefaultNodeExecutor());
+        var runner = new WorkflowRunner(new DefaultNodeExecutor(), mockTraversal);
         var recorder = new EventRecorder();
         recorder.Subscribe(runner);
 
@@ -195,7 +195,7 @@ public class WorkflowExecutionEventsTests
         var mockTraversal = Substitute.For<Nodify.Workflow.Core.Execution.IGraphTraversal>();
         var nodeA = SetupEmptyGraph(mockTraversal);
         var context = new Nodify.Workflow.Core.Execution.Context.ExecutionContext();
-        var runner = new WorkflowRunner(mockTraversal, new DefaultNodeExecutor());
+        var runner = new WorkflowRunner(new DefaultNodeExecutor(), mockTraversal);
         var recorder = new EventRecorder();
         recorder.Subscribe(runner);
 
@@ -225,7 +225,7 @@ public class WorkflowExecutionEventsTests
         var mockTraversal = Substitute.For<Nodify.Workflow.Core.Execution.IGraphTraversal>();
         var (nodeA, nodeB) = SetupLinearSuccessGraph(mockTraversal);
         var context = new Nodify.Workflow.Core.Execution.Context.ExecutionContext();
-        var runner = new WorkflowRunner(mockTraversal, new DefaultNodeExecutor());
+        var runner = new WorkflowRunner(new DefaultNodeExecutor(), mockTraversal);
         var recorder = new EventRecorder();
         recorder.Subscribe(runner);
 
@@ -257,7 +257,7 @@ public class WorkflowExecutionEventsTests
         var mockTraversal = Substitute.For<Nodify.Workflow.Core.Execution.IGraphTraversal>();
         var (nodeA, nodeB, nodeC) = SetupLinearFailureGraph(mockTraversal);
         var context = new Nodify.Workflow.Core.Execution.Context.ExecutionContext();
-        var runner = new WorkflowRunner(mockTraversal, new DefaultNodeExecutor());
+        var runner = new WorkflowRunner(new DefaultNodeExecutor(), mockTraversal);
         var recorder = new EventRecorder();
         recorder.Subscribe(runner);
 
@@ -284,7 +284,7 @@ public class WorkflowExecutionEventsTests
         var mockTraversal = Substitute.For<Nodify.Workflow.Core.Execution.IGraphTraversal>();
         var context = new Nodify.Workflow.Core.Execution.Context.ExecutionContext();
         var recorder = new EventRecorder();
-        var runner = new WorkflowRunner(mockTraversal, new DefaultNodeExecutor());
+        var runner = new WorkflowRunner(new DefaultNodeExecutor(), mockTraversal);
         var startNode = new TestNode(); // Create nodes specific to test
         var endNode = new TestNode();
         recorder.Subscribe(runner);
@@ -334,7 +334,7 @@ public class WorkflowExecutionEventsTests
         var mockTraversal = Substitute.For<Nodify.Workflow.Core.Execution.IGraphTraversal>();
         var context = new Nodify.Workflow.Core.Execution.Context.ExecutionContext();
         var recorder = new EventRecorder();
-        var runner = new WorkflowRunner(mockTraversal, new DefaultNodeExecutor());
+        var runner = new WorkflowRunner(new DefaultNodeExecutor(), mockTraversal);
         var startNode = new TestNode();
         recorder.Subscribe(runner);
 
@@ -386,7 +386,7 @@ public class WorkflowExecutionEventsTests
         var mockTraversal = Substitute.For<Nodify.Workflow.Core.Execution.IGraphTraversal>();
         var context = new Nodify.Workflow.Core.Execution.Context.ExecutionContext();
         var recorder = new EventRecorder();
-        var runner = new WorkflowRunner(mockTraversal, new DefaultNodeExecutor());
+        var runner = new WorkflowRunner(new DefaultNodeExecutor(), mockTraversal);
         var startNode = new TestNode();
         recorder.Subscribe(runner);
 
@@ -438,7 +438,7 @@ public class WorkflowExecutionEventsTests
         var mockTraversal = Substitute.For<Nodify.Workflow.Core.Execution.IGraphTraversal>();
         var context = new Nodify.Workflow.Core.Execution.Context.ExecutionContext();
         var recorder = new EventRecorder();
-        var runner = new WorkflowRunner(mockTraversal, new DefaultNodeExecutor());
+        var runner = new WorkflowRunner(new DefaultNodeExecutor(), mockTraversal);
         var startNode = new TestNode();
         var endNode = new TestNode();
         recorder.Subscribe(runner);
@@ -488,7 +488,7 @@ public class WorkflowExecutionEventsTests
         var mockTraversal = Substitute.For<Nodify.Workflow.Core.Execution.IGraphTraversal>();
         var context = new Nodify.Workflow.Core.Execution.Context.ExecutionContext();
         var recorder = new EventRecorder();
-        var runner = new WorkflowRunner(mockTraversal, new DefaultNodeExecutor());
+        var runner = new WorkflowRunner(new DefaultNodeExecutor(), mockTraversal);
         var startNode = new TestNode();
         var middleNode = new TestNode(); // Keep nodes local to test
         var endNode = new TestNode();
@@ -525,7 +525,7 @@ public class WorkflowExecutionEventsTests
         var mockTraversal = Substitute.For<Nodify.Workflow.Core.Execution.IGraphTraversal>();
         var context = new Nodify.Workflow.Core.Execution.Context.ExecutionContext();
         var recorder = new EventRecorder();
-        var runner = new WorkflowRunner(mockTraversal, new DefaultNodeExecutor());
+        var runner = new WorkflowRunner(new DefaultNodeExecutor(), mockTraversal);
         var startNode = new TestNode();
         var endNode = new TestNode(); // Should not run
         recorder.Subscribe(runner);
@@ -589,7 +589,7 @@ public class WorkflowExecutionEventsTests
         var mockTraversal = Substitute.For<Nodify.Workflow.Core.Execution.IGraphTraversal>();
         var context = new Nodify.Workflow.Core.Execution.Context.ExecutionContext();
         var recorder = new EventRecorder();
-        var runner = new WorkflowRunner(mockTraversal, new DefaultNodeExecutor());
+        var runner = new WorkflowRunner(new DefaultNodeExecutor(), mockTraversal);
         var startNode = new TestNode();
         var endNode = new TestNode(); // Should not run
         recorder.Subscribe(runner);
@@ -651,7 +651,7 @@ public class WorkflowExecutionEventsTests
         var mockTraversal = Substitute.For<Nodify.Workflow.Core.Execution.IGraphTraversal>();
         var context = new Nodify.Workflow.Core.Execution.Context.ExecutionContext();
         var recorder = new EventRecorder();
-        var runner = new WorkflowRunner(mockTraversal, new DefaultNodeExecutor());
+        var runner = new WorkflowRunner(new DefaultNodeExecutor(), mockTraversal);
         var startNode = new TestNode();
         var endNode = new TestNode();
         recorder.Subscribe(runner);

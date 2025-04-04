@@ -10,7 +10,7 @@ using Nodify.Workflow.Core.Registry;
 
 namespace Nodify.Workflow.Nodes.Data;
 
-[WorkflowNode("Set Variable", "Data", Description = "Sets or updates a variable in the workflow context.")]
+[WorkflowNode("Set Variable", "Data", Description = "Sets or updates a variable in the execution context.")]
 public class SetVariableNode : Node
 {
     // Removed connector keys as Key property doesn't exist
@@ -19,7 +19,7 @@ public class SetVariableNode : Node
 
     // Configurable Properties
     public string VariableName { get; set; } = string.Empty;
-    public object? ValueToSet { get; set; }
+    public object? Value { get; set; }
 
     public SetVariableNode()
     {
@@ -30,8 +30,9 @@ public class SetVariableNode : Node
         AddOutputConnector(new Connector(this, ConnectorDirection.Output, typeof(object)));
     }
 
-    public override Task<NodeExecutionResult> ExecuteAsync(IExecutionContext context, CancellationToken cancellationToken)
+    public override Task<NodeExecutionResult> ExecuteAsync(IExecutionContext context, object? inputData, CancellationToken cancellationToken)
     {
+        // InputData is ignored by SetVariableNode.
         if (string.IsNullOrWhiteSpace(VariableName))
         {
             return Task.FromResult(NodeExecutionResult.Failed(new InvalidOperationException("VariableName property cannot be empty.")));
@@ -39,14 +40,15 @@ public class SetVariableNode : Node
 
         try
         {
-            context.SetVariable(VariableName, ValueToSet);
-            
-            // Find the first (assumed only) output connector and activate it by Id
-            var outputConnector = OutputConnectors.FirstOrDefault(); // Using Linq
+            // Use the Value property directly
+            context.SetVariable(VariableName, Value);
+
+            // Activate the output connector without data
+            var outputConnector = OutputConnectors.FirstOrDefault(); // Assume one output connector
             if (outputConnector == null)
             {
-                 // This should realistically not happen if the constructor adds one
-                 return Task.FromResult(NodeExecutionResult.Failed(new InvalidOperationException("SetVariableNode has no output connector defined.")));
+                // Should not happen if constructor adds one
+                return Task.FromResult(NodeExecutionResult.Failed(new InvalidOperationException("SetVariableNode has no output connector defined.")));
             }
             return Task.FromResult(NodeExecutionResult.Succeeded(outputConnector.Id));
         }

@@ -23,107 +23,102 @@ public class WorkflowRunner
     private readonly IGraphTraversal _traversal;
     private readonly INodeExecutor _nodeExecutor;
 
-    // Updated constructor
-    public WorkflowRunner(IGraphTraversal traversal, INodeExecutor nodeExecutor)
+    public WorkflowRunner(INodeExecutor nodeExecutor, IGraphTraversal? traversal = null)
     {
-        _traversal = traversal ?? throw new ArgumentNullException(nameof(traversal));
+        _traversal = traversal ?? new DefaultGraphTraversal();
         _nodeExecutor = nodeExecutor ?? throw new ArgumentNullException(nameof(nodeExecutor));
     }
 
-    // Actual execution logic will be implemented here
     public virtual async Task RunAsync(INode startNode, IExecutionContext context, CancellationToken cancellationToken = default)
     {
         Guid workflowId = context.ExecutionId;
-        // Check for immediate cancellation before even starting
         if (cancellationToken.IsCancellationRequested)
         {
-            context.SetStatus(Nodify.Workflow.Core.Execution.Context.ExecutionStatus.Cancelled);
-            // Do not throw here, just return. The workflow didn't technically start.
+            context.SetStatus(Context.ExecutionStatus.Cancelled);
             return;
         }
 
-        context.SetStatus(Nodify.Workflow.Core.Execution.Context.ExecutionStatus.Running);
+        context.SetStatus(Context.ExecutionStatus.Running);
         OnWorkflowStarted(new WorkflowExecutionStartedEventArgs(context, workflowId));
 
         try
         {
-            // 2. Get execution order
-            IReadOnlyList<INode> executionOrder;
-            try
-            {
-                // Pass token if traversal supports it (assuming not for now based on IGraphTraversal)
-                cancellationToken.ThrowIfCancellationRequested();
-                executionOrder = _traversal.TopologicalSort(startNode);
-            }
-            catch (OperationCanceledException) { throw; } // Re-throw cancellation
-            catch (Exception ex)
-            {
-                 context.SetStatus(Nodify.Workflow.Core.Execution.Context.ExecutionStatus.Failed);
-                 OnWorkflowFailed(new WorkflowExecutionFailedEventArgs(context, new InvalidOperationException("Workflow failed during graph traversal.", ex)));
-                 return;
-            }
+            // Get all nodes in topological order
+            var orderedNodes = _traversal.TopologicalSort(startNode);
+            object? lastOutputData = null;
 
-            // 3. Loop through nodes
-            foreach (var node in executionOrder)
+            foreach (var currentNode in orderedNodes)
             {
-                // Check for cancellation before starting the node
-                cancellationToken.ThrowIfCancellationRequested();
+                if (cancellationToken.IsCancellationRequested)
+                {
+                    context.SetStatus(Context.ExecutionStatus.Cancelled);
+                    OnWorkflowCancelled(new WorkflowCancelledEventArgs(context));
+                    return;
+                }
 
-                // Raise specific event type
-                OnNodeStarting(new NodeExecutionStartingEventArgs(node, context));
-
+                OnNodeStarting(new NodeExecutionStartingEventArgs(currentNode, context));
+                NodeExecutionResult result;
                 try
                 {
-                    // Pass token to executor
-                    NodeExecutionResult result = await _nodeExecutor.ExecuteAsync(node, context, cancellationToken);
-
-                    // Check cancellation *after* await, in case node execution finished but cancellation was requested during await
-                    cancellationToken.ThrowIfCancellationRequested();
-
-                    // Raise specific event type
-                    if (result.Success)
-                    {
-                        OnNodeCompleted(new NodeExecutionCompletedEventArgs(node, context));
-                    }
-                    else
-                    {
-                        // Node failed - result.Error should not be null
-                        OnNodeFailed(new NodeExecutionFailedEventArgs(node, context, result.Error!));
-                        context.SetStatus(Nodify.Workflow.Core.Execution.Context.ExecutionStatus.Failed);
-                        OnWorkflowFailed(new WorkflowExecutionFailedEventArgs(context, result.Error!, node));
-                        return; // Stop execution
-                    }
+                    result = await _nodeExecutor.ExecuteAsync(currentNode, context, lastOutputData, cancellationToken);
                 }
-                // Catch OCE separately from other node execution errors
-                catch (OperationCanceledException) { throw; } // Re-throw to be caught by the outer handler
-                catch (Exception ex) // Catch errors during node execution or event raising
+                catch (OperationCanceledException)
                 {
-                     OnNodeFailed(new NodeExecutionFailedEventArgs(node, context, ex));
-                     context.SetStatus(Nodify.Workflow.Core.Execution.Context.ExecutionStatus.Failed);
-                     OnWorkflowFailed(new WorkflowExecutionFailedEventArgs(context, ex, node));
-                     return; // Stop execution
+                    // Handle cancellation by stopping execution and raising the cancelled event
+                    context.SetStatus(Context.ExecutionStatus.Cancelled);
+                    OnWorkflowCancelled(new WorkflowCancelledEventArgs(context));
+                    return;
+                }
+                catch (Exception nodeExecutionEx)
+                {
+                    // Only treat non-cancellation exceptions as failures
+                    OnNodeFailed(new NodeExecutionFailedEventArgs(currentNode, context, nodeExecutionEx));
+                    context.SetStatus(Context.ExecutionStatus.Failed);
+                    OnWorkflowFailed(new WorkflowExecutionFailedEventArgs(context, nodeExecutionEx, currentNode));
+                    return;
+                }
+
+                if (result.Success)
+                {
+                    OnNodeCompleted(new NodeExecutionCompletedEventArgs(currentNode, context));
+                    lastOutputData = result.OutputData;
+                }
+                else
+                {
+                    // Check if the failure is due to cancellation
+                    if (result.Error is OperationCanceledException)
+                    {
+                        context.SetStatus(Context.ExecutionStatus.Cancelled);
+                        OnWorkflowCancelled(new WorkflowCancelledEventArgs(context));
+                        return;
+                    }
+
+                    OnNodeFailed(new NodeExecutionFailedEventArgs(currentNode, context, result.Error!));
+                    context.SetStatus(Context.ExecutionStatus.Failed);
+                    OnWorkflowFailed(new WorkflowExecutionFailedEventArgs(context, result.Error!, currentNode));
+                    return;
                 }
             }
 
-            // 4. If loop completes without error
-            context.SetStatus(Nodify.Workflow.Core.Execution.Context.ExecutionStatus.Completed);
+            context.SetStatus(Context.ExecutionStatus.Completed);
             OnWorkflowCompleted(new WorkflowExecutionCompletedEventArgs(context, context.CurrentStatus));
         }
-        catch (OperationCanceledException) // Catch cancellation from anywhere within the try block
+        catch (Exception ex)
         {
-            context.SetStatus(Nodify.Workflow.Core.Execution.Context.ExecutionStatus.Cancelled);
-            OnWorkflowCancelled(new WorkflowCancelledEventArgs(context));
-            // Do not treat cancellation as a workflow failure
-        }
-        catch (Exception ex) // Catch unexpected errors during overall workflow setup/execution
-        {
-             // 5. Handle unexpected exceptions
-             context.SetStatus(Nodify.Workflow.Core.Execution.Context.ExecutionStatus.Failed);
-             OnWorkflowFailed(new WorkflowExecutionFailedEventArgs(context, ex)); // Failed node is null here
+            // Only treat non-cancellation exceptions as failures
+            if (ex is OperationCanceledException)
+            {
+                context.SetStatus(Context.ExecutionStatus.Cancelled);
+                OnWorkflowCancelled(new WorkflowCancelledEventArgs(context));
+            }
+            else
+            {
+                context.SetStatus(Context.ExecutionStatus.Failed);
+                OnWorkflowFailed(new WorkflowExecutionFailedEventArgs(context, ex, null));
+            }
         }
     }
 
-    // Helper methods with updated signatures
     protected virtual void OnWorkflowStarted(WorkflowExecutionStartedEventArgs e) => WorkflowStarted?.Invoke(this, e);
     protected virtual void OnNodeStarting(NodeExecutionStartingEventArgs e) => NodeStarting?.Invoke(this, e);
     protected virtual void OnNodeCompleted(NodeExecutionCompletedEventArgs e) => NodeCompleted?.Invoke(this, e);

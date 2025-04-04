@@ -15,7 +15,7 @@ internal class TestNode : Node
     /// Provides a minimal successful implementation for the abstract ExecuteAsync method.
     /// Ignores the cancellation token for this basic implementation.
     /// </summary>
-    public override Task<NodeExecutionResult> ExecuteAsync(IExecutionContext context, CancellationToken cancellationToken)
+    public override Task<NodeExecutionResult> ExecuteAsync(IExecutionContext context, object? inputData, CancellationToken cancellationToken)
     {
         // Simulate successful execution for testing basic node/graph functionality
         return Task.FromResult(NodeExecutionResult.Succeeded());
