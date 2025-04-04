@@ -24,8 +24,8 @@ public static class PropertyPathResolver
 
         if (string.IsNullOrWhiteSpace(path))
         {
-            errorMessage = "Property path cannot be empty.";
-            return false;
+            value = target;
+            return true;
         }
 
         if (target == null)

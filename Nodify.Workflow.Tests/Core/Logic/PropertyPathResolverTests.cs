@@ -133,19 +133,18 @@ public class PropertyPathResolverTests
     [InlineData(null)]
     [InlineData("")]
     [InlineData("   ")]
-    public void TryResolvePath_EmptyOrNullPath_ShouldFail(string? path)
+    public void TryResolvePath_EmptyOrNullPath_ShouldReturnTargetObject(string? path)
     {
         // Arrange
         var target = new NestedTestData();
 
         // Act
-        // Need to cast path to non-nullable for the method call
         bool result = PropertyPathResolver.TryResolvePath(target, path!, out object? actualValue, out string? error);
 
         // Assert
-        result.ShouldBeFalse();
-        actualValue.ShouldBeNull();
-        error.ShouldBe("Property path cannot be empty.");
+        result.ShouldBeTrue();
+        error.ShouldBeNull();
+        actualValue.ShouldBe(target);
     }
 
     // Consider adding tests for edge cases like indexers if needed later

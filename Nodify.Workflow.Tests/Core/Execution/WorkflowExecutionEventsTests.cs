@@ -13,6 +13,8 @@ using NSubstitute.ReceivedExtensions;
 using Shouldly;
 using Xunit;
 using Nodify.Workflow.Tests.Core.Models.Helpers; // Add for TestNode
+using Nodify.Workflow.Core.Models; // Added for Connector and Connection
+using System.Reflection; // Added for reflection hack
 
 namespace Nodify.Workflow.Tests.Core.Execution;
 
@@ -22,24 +24,84 @@ public interface ITestNode : INode { }
 internal class FailureNode : ITestNode
 {
     public Guid Id { get; } = Guid.NewGuid();
-    public IReadOnlyCollection<IConnector> InputConnectors { get; set; } = new List<IConnector>().AsReadOnly();
-    public IReadOnlyCollection<IConnector> OutputConnectors { get; set; } = new List<IConnector>().AsReadOnly();
+    private List<IConnector> _inputConnectors = new();
+    private List<IConnector> _outputConnectors = new();
+    public IReadOnlyCollection<IConnector> InputConnectors { get => _inputConnectors.AsReadOnly(); set => _inputConnectors = value.ToList(); }
+    public IReadOnlyCollection<IConnector> OutputConnectors { get => _outputConnectors.AsReadOnly(); set => _outputConnectors = value.ToList(); }
     public double X { get; set; } = 0;
     public double Y { get; set; } = 0;
-    public void AddInputConnector(IConnector connector) { }
-    public void AddOutputConnector(IConnector connector) { }
-    public void RemoveInputConnector(IConnector connector) { }
-    public void RemoveOutputConnector(IConnector connector) { }
-    public IConnector? GetInputConnector(Guid id) => null;
-    public IConnector? GetOutputConnector(Guid id) => null;
-    public bool RemoveConnector(IConnector connector) => false;
+    public void AddInputConnector(IConnector connector) => _inputConnectors.Add(connector);
+    public void AddOutputConnector(IConnector connector) => _outputConnectors.Add(connector);
+    public void RemoveInputConnector(IConnector connector) => _inputConnectors.Remove(connector);
+    public void RemoveOutputConnector(IConnector connector) => _outputConnectors.Remove(connector);
+    public IConnector? GetInputConnector(Guid id) => _inputConnectors.FirstOrDefault(c => c.Id == id);
+    public IConnector? GetOutputConnector(Guid id) => _outputConnectors.FirstOrDefault(c => c.Id == id);
+    public bool RemoveConnector(IConnector connector) => _inputConnectors.Remove(connector) || _outputConnectors.Remove(connector);
     public bool Validate() => true;
 
-    // Implemented ExecuteAsync for FailureNode
     public Task<NodeExecutionResult> ExecuteAsync(IExecutionContext context, object? inputData, CancellationToken cancellationToken)
     {
         var error = new InvalidOperationException($"Simulated failure in node {Id} ({GetType().Name}).");
         return Task.FromResult(NodeExecutionResult.Failed(error));
+    }
+}
+
+// === Async Test Nodes ===
+internal class AsyncTestNode : ITestNode
+{
+    public Guid Id { get; } = Guid.NewGuid();
+    private List<IConnector> _inputConnectors = new();
+    private List<IConnector> _outputConnectors = new();
+    public IReadOnlyCollection<IConnector> InputConnectors { get => _inputConnectors.AsReadOnly(); set => _inputConnectors = value.ToList(); }
+    public IReadOnlyCollection<IConnector> OutputConnectors { get => _outputConnectors.AsReadOnly(); set => _outputConnectors = value.ToList(); }
+    public double X { get; set; } = 0;
+    public double Y { get; set; } = 0;
+    private readonly TimeSpan nodeDelay;
+    private readonly bool _shouldFail;
+    private readonly bool _failWithException;
+    public Guid? OutputConnectorIdToActivate { get; set; } = null;
+
+    public AsyncTestNode(TimeSpan? delay = null, bool shouldFail = false, bool failWithException = false)
+    {
+        nodeDelay = delay ?? TimeSpan.FromMilliseconds(10);
+        _shouldFail = shouldFail;
+        _failWithException = failWithException;
+        
+        // Add a default output connector automatically
+        AddOutputConnector(new Connector(this, ConnectorDirection.Output, typeof(object)));
+    }
+    
+    public void AddInputConnector(IConnector connector) => _inputConnectors.Add(connector);
+    public void AddOutputConnector(IConnector connector) => _outputConnectors.Add(connector);
+    public void RemoveInputConnector(IConnector connector) => _inputConnectors.Remove(connector);
+    public void RemoveOutputConnector(IConnector connector) => _outputConnectors.Remove(connector);
+    public IConnector? GetInputConnector(Guid id) => _inputConnectors.FirstOrDefault(c => c.Id == id);
+    public IConnector? GetOutputConnector(Guid id) => _outputConnectors.FirstOrDefault(c => c.Id == id);
+    public bool RemoveConnector(IConnector connector) => _inputConnectors.Remove(connector) || _outputConnectors.Remove(connector);
+    public bool Validate() => true;
+
+    public async Task<NodeExecutionResult> ExecuteAsync(IExecutionContext context, object? inputData, CancellationToken cancellationToken)
+    {
+        try
+        {
+            await Task.Delay(nodeDelay, cancellationToken);
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+
+        if (_shouldFail)
+        {
+            var error = new InvalidOperationException($"Simulated async failure in node {Id}.");
+            if (_failWithException) throw error;
+            return NodeExecutionResult.Failed(error);
+        }
+
+        // Use the public property to determine which connector ID to activate
+        return OutputConnectorIdToActivate.HasValue 
+            ? NodeExecutionResult.Succeeded(OutputConnectorIdToActivate.Value) 
+            : NodeExecutionResult.Succeeded(); // Succeeds without activation if property is null
     }
 }
 
@@ -80,44 +142,93 @@ public class WorkflowExecutionEventsTests
     }
 
     // === Test Graph Setup Helpers ===
-    private (ITestNode NodeA, ITestNode NodeB) SetupLinearSuccessGraph(Nodify.Workflow.Core.Execution.IGraphTraversal mockTraversal)
+    private (Graph graph, IExecutionContext context, ITestNode NodeA, ITestNode NodeB) SetupLinearSuccessGraph()
     {
+        var graph = new Graph();
+        var context = new Nodify.Workflow.Core.Execution.Context.ExecutionContext();
         var nodeA = Substitute.For<ITestNode>();
         nodeA.Id.Returns(Guid.NewGuid());
         nodeA.ExecuteAsync(Arg.Any<IExecutionContext>(), Arg.Any<object?>(), Arg.Any<CancellationToken>()).Returns(Task.FromResult(NodeExecutionResult.Succeeded()));
+        graph.AddNode(nodeA);
+        // Add default connectors for mock node A
+        var outputA = new Connector(nodeA, ConnectorDirection.Output, typeof(object));
+        nodeA.OutputConnectors.Returns(new List<IConnector> { outputA }.AsReadOnly());
 
         var nodeB = Substitute.For<ITestNode>();
         nodeB.Id.Returns(Guid.NewGuid());
         nodeB.ExecuteAsync(Arg.Any<IExecutionContext>(), Arg.Any<object?>(), Arg.Any<CancellationToken>()).Returns(Task.FromResult(NodeExecutionResult.Succeeded()));
+        graph.AddNode(nodeB);
+        // Add default connectors for mock node B
+        var inputB = new Connector(nodeB, ConnectorDirection.Input, typeof(object));
+        nodeB.InputConnectors.Returns(new List<IConnector> { inputB }.AsReadOnly());
 
-        mockTraversal.TopologicalSort(nodeA).Returns(new List<INode> { nodeA, nodeB });
-        return (nodeA, nodeB);
+        graph.AddConnection(outputA, inputB); // Connect using graph
+
+        return (graph, context, nodeA, nodeB);
     }
 
-     private (ITestNode NodeA, FailureNode NodeB, ITestNode NodeC) SetupLinearFailureGraph(Nodify.Workflow.Core.Execution.IGraphTraversal mockTraversal)
+     private (Graph graph, IExecutionContext context, ITestNode NodeA, FailureNode NodeB, ITestNode NodeC) SetupLinearFailureGraph()
     {
+        var graph = new Graph();
+        var context = new Nodify.Workflow.Core.Execution.Context.ExecutionContext();
         var nodeA = Substitute.For<ITestNode>();
         nodeA.Id.Returns(Guid.NewGuid());
         nodeA.ExecuteAsync(Arg.Any<IExecutionContext>(), Arg.Any<object?>(), Arg.Any<CancellationToken>()).Returns(Task.FromResult(NodeExecutionResult.Succeeded()));
+        graph.AddNode(nodeA);
+        var outputA = new Connector(nodeA, ConnectorDirection.Output, typeof(object));
+        nodeA.OutputConnectors.Returns(new List<IConnector> { outputA }.AsReadOnly());
 
-        var nodeB = new FailureNode(); // FailureNode implements its own ExecuteAsync
+        var nodeB = new FailureNode(); // Real node, add connectors directly
+        graph.AddNode(nodeB);
+        var inputB = new Connector(nodeB, ConnectorDirection.Input, typeof(object));
+        nodeB.AddInputConnector(inputB); // Use method
+        var outputB = new Connector(nodeB, ConnectorDirection.Output, typeof(object)); // Add output in case needed
+        nodeB.AddOutputConnector(outputB);
 
         var nodeC = Substitute.For<ITestNode>();
         nodeC.Id.Returns(Guid.NewGuid());
-        // nodeC's ExecuteAsync doesn't need configuration as it shouldn't be called
+        graph.AddNode(nodeC);
+        var inputC = new Connector(nodeC, ConnectorDirection.Input, typeof(object));
+        nodeC.InputConnectors.Returns(new List<IConnector> { inputC }.AsReadOnly());
+        
+        graph.AddConnection(outputA, inputB); // Connect A -> B
+        // Optionally connect B -> C if the test logic requires it
+        // graph.AddConnection(outputB, inputC);
 
-        mockTraversal.TopologicalSort(nodeA).Returns(new List<INode> { nodeA, nodeB, nodeC });
-        return (nodeA, nodeB, nodeC);
+        return (graph, context, nodeA, nodeB, nodeC);
     }
 
-     private INode SetupEmptyGraph(Nodify.Workflow.Core.Execution.IGraphTraversal mockTraversal)
+     private (Graph graph, IExecutionContext context, INode NodeA) SetupEmptyGraph()
      {
+         var graph = new Graph();
+         var context = new Nodify.Workflow.Core.Execution.Context.ExecutionContext();
          var nodeA = Substitute.For<ITestNode>();
          nodeA.Id.Returns(Guid.NewGuid());
          nodeA.ExecuteAsync(Arg.Any<IExecutionContext>(), Arg.Any<object?>(), Arg.Any<CancellationToken>()).Returns(Task.FromResult(NodeExecutionResult.Succeeded()));
+         graph.AddNode(nodeA);
+         // Add default output
+         var outputA = new Connector(nodeA, ConnectorDirection.Output, typeof(object));
+         nodeA.OutputConnectors.Returns(new List<IConnector> { outputA }.AsReadOnly());
 
-         mockTraversal.TopologicalSort(nodeA).Returns(new List<INode> { nodeA });
-         return nodeA;
+         return (graph, context, nodeA);
+     }
+     
+     private (Graph graph, IExecutionContext context, AsyncTestNode Node1, AsyncTestNode Node2) SetupAsyncSuccessGraph(TimeSpan? delay1 = null, TimeSpan? delay2 = null)
+     {
+         var graph = new Graph();
+         var context = new Nodify.Workflow.Core.Execution.Context.ExecutionContext();
+         var asyncNode1 = new AsyncTestNode(delay1);
+         graph.AddNode(asyncNode1);
+         var output1 = asyncNode1.OutputConnectors.First(); // Get the default connector
+         
+         var asyncNode2 = new AsyncTestNode(delay2);
+         graph.AddNode(asyncNode2);
+         var input2 = new Connector(asyncNode2, ConnectorDirection.Input, typeof(object));
+         asyncNode2.AddInputConnector(input2);
+
+         graph.AddConnection(output1, input2); // Connect using graph
+
+         return (graph, context, asyncNode1, asyncNode2);
      }
 
     // === Test Scenarios ===
@@ -125,32 +236,30 @@ public class WorkflowExecutionEventsTests
     public async Task RunAsync_SuccessfulLinearExecution_RaisesCorrectEventsInOrder()
     {
         // Arrange
-        var mockTraversal = Substitute.For<Nodify.Workflow.Core.Execution.IGraphTraversal>();
-        var (nodeA, nodeB) = SetupLinearSuccessGraph(mockTraversal);
-        var context = new Nodify.Workflow.Core.Execution.Context.ExecutionContext();
-        var runner = new WorkflowRunner(new DefaultNodeExecutor(), mockTraversal);
+        var (graph, context, nodeA, nodeB) = SetupLinearSuccessGraph();
+        var runner = new WorkflowRunner(new DefaultNodeExecutor());
         var recorder = new EventRecorder();
         recorder.Subscribe(runner);
 
         // Act
-        await runner.RunAsync(nodeA, context);
+        await runner.RunAsync(nodeA, context); // Start from nodeA
 
         // Assert
         recorder.WorkflowStartedCount.ShouldBe(1);
         recorder.NodeStartingCounts.GetValueOrDefault(nodeA.Id).ShouldBe(1);
         recorder.NodeCompletedCounts.GetValueOrDefault(nodeA.Id).ShouldBe(1);
         recorder.NodeFailedCounts.GetValueOrDefault(nodeA.Id).ShouldBe(0);
-        recorder.NodeStartingCounts.GetValueOrDefault(nodeB.Id).ShouldBe(1);
-        recorder.NodeCompletedCounts.GetValueOrDefault(nodeB.Id).ShouldBe(1);
+        recorder.NodeStartingCounts.GetValueOrDefault(nodeB.Id).ShouldBe(1); // This should now be 1
+        recorder.NodeCompletedCounts.GetValueOrDefault(nodeB.Id).ShouldBe(1); // This should now be 1
         recorder.NodeFailedCounts.GetValueOrDefault(nodeB.Id).ShouldBe(0);
         recorder.WorkflowCompletedCount.ShouldBe(1);
         recorder.WorkflowFailedCount.ShouldBe(0);
         recorder.RecordedEvents.Count.ShouldBe(6);
         recorder.RecordedEvents[0].ShouldBeOfType<WorkflowExecutionStartedEventArgs>();
-        recorder.RecordedEvents[1].ShouldBeOfType<NodeExecutionStartingEventArgs>();
-        recorder.RecordedEvents[2].ShouldBeOfType<NodeExecutionCompletedEventArgs>();
-        recorder.RecordedEvents[3].ShouldBeOfType<NodeExecutionStartingEventArgs>();
-        recorder.RecordedEvents[4].ShouldBeOfType<NodeExecutionCompletedEventArgs>();
+        recorder.RecordedEvents[1].ShouldBeOfType<NodeExecutionStartingEventArgs>().Node.Id.ShouldBe(nodeA.Id);
+        recorder.RecordedEvents[2].ShouldBeOfType<NodeExecutionCompletedEventArgs>().Node.Id.ShouldBe(nodeA.Id);
+        recorder.RecordedEvents[3].ShouldBeOfType<NodeExecutionStartingEventArgs>().Node.Id.ShouldBe(nodeB.Id);
+        recorder.RecordedEvents[4].ShouldBeOfType<NodeExecutionCompletedEventArgs>().Node.Id.ShouldBe(nodeB.Id);
         recorder.RecordedEvents[5].ShouldBeOfType<WorkflowExecutionCompletedEventArgs>();
     }
 
@@ -158,10 +267,8 @@ public class WorkflowExecutionEventsTests
     public async Task RunAsync_NodeFailureExecution_RaisesCorrectEvents()
     {
         // Arrange
-        var mockTraversal = Substitute.For<Nodify.Workflow.Core.Execution.IGraphTraversal>();
-        var (nodeA, nodeB, nodeC) = SetupLinearFailureGraph(mockTraversal);
-        var context = new Nodify.Workflow.Core.Execution.Context.ExecutionContext();
-        var runner = new WorkflowRunner(new DefaultNodeExecutor(), mockTraversal);
+        var (graph, context, nodeA, nodeB, nodeC) = SetupLinearFailureGraph();
+        var runner = new WorkflowRunner(new DefaultNodeExecutor());
         var recorder = new EventRecorder();
         recorder.Subscribe(runner);
 
@@ -172,7 +279,7 @@ public class WorkflowExecutionEventsTests
         recorder.WorkflowStartedCount.ShouldBe(1);
         recorder.NodeStartingCounts.GetValueOrDefault(nodeA.Id).ShouldBe(1);
         recorder.NodeCompletedCounts.GetValueOrDefault(nodeA.Id).ShouldBe(1);
-        recorder.NodeStartingCounts.GetValueOrDefault(nodeB.Id).ShouldBe(1);
+        recorder.NodeStartingCounts.GetValueOrDefault(nodeB.Id).ShouldBe(1); // This should now be 1
         recorder.NodeFailedCounts.GetValueOrDefault(nodeB.Id).ShouldBe(1);
         recorder.NodeCompletedCounts.GetValueOrDefault(nodeB.Id).ShouldBe(0);
         recorder.NodeStartingCounts.GetValueOrDefault(nodeC.Id).ShouldBe(0);
@@ -192,10 +299,8 @@ public class WorkflowExecutionEventsTests
     public async Task RunAsync_EmptyGraphExecution_RaisesStartAndComplete()
     {
         // Arrange
-        var mockTraversal = Substitute.For<Nodify.Workflow.Core.Execution.IGraphTraversal>();
-        var nodeA = SetupEmptyGraph(mockTraversal);
-        var context = new Nodify.Workflow.Core.Execution.Context.ExecutionContext();
-        var runner = new WorkflowRunner(new DefaultNodeExecutor(), mockTraversal);
+        var (graph, context, nodeA) = SetupEmptyGraph();
+        var runner = new WorkflowRunner(new DefaultNodeExecutor());
         var recorder = new EventRecorder();
         recorder.Subscribe(runner);
 
@@ -222,14 +327,11 @@ public class WorkflowExecutionEventsTests
     public async Task RunAsync_EventsContainCorrectArguments()
     {
         // Arrange
-        var mockTraversal = Substitute.For<Nodify.Workflow.Core.Execution.IGraphTraversal>();
-        var (nodeA, nodeB) = SetupLinearSuccessGraph(mockTraversal);
-        var context = new Nodify.Workflow.Core.Execution.Context.ExecutionContext();
-        var runner = new WorkflowRunner(new DefaultNodeExecutor(), mockTraversal);
+        var (graph, context, nodeA, nodeB) = SetupLinearSuccessGraph();
+        var runner = new WorkflowRunner(new DefaultNodeExecutor());
         var recorder = new EventRecorder();
         recorder.Subscribe(runner);
-
-        // Act
+        
         await runner.RunAsync(nodeA, context);
 
         // Assert
@@ -254,434 +356,333 @@ public class WorkflowExecutionEventsTests
     public async Task RunAsync_FailureEventContainsExceptionAndNode()
     {
         // Arrange
-        var mockTraversal = Substitute.For<Nodify.Workflow.Core.Execution.IGraphTraversal>();
-        var (nodeA, nodeB, nodeC) = SetupLinearFailureGraph(mockTraversal);
-        var context = new Nodify.Workflow.Core.Execution.Context.ExecutionContext();
-        var runner = new WorkflowRunner(new DefaultNodeExecutor(), mockTraversal);
+        var (graph, context, nodeA, nodeB, _) = SetupLinearFailureGraph();
+        var runner = new WorkflowRunner(new DefaultNodeExecutor());
         var recorder = new EventRecorder();
         recorder.Subscribe(runner);
-
-        // Act
+        
         await runner.RunAsync(nodeA, context);
 
         // Assert
+        var workflowFailedArgs = recorder.GetEventsOfType<WorkflowExecutionFailedEventArgs>().FirstOrDefault();
+        workflowFailedArgs.ShouldNotBeNull();
+        workflowFailedArgs.Context.ShouldBeSameAs(context);
+        workflowFailedArgs.Error.ShouldBeOfType<InvalidOperationException>();
+        workflowFailedArgs.FailedNode.ShouldBeSameAs(nodeB);
+
         var nodeBFailedArgs = recorder.GetEventsOfType<NodeExecutionFailedEventArgs>().FirstOrDefault(e => e.Node.Id == nodeB.Id);
         nodeBFailedArgs.ShouldNotBeNull();
         nodeBFailedArgs.Node.ShouldBeSameAs(nodeB);
-        nodeBFailedArgs.Error.ShouldBeOfType<InvalidOperationException>();
+        nodeBFailedArgs.Error.ShouldBeSameAs(workflowFailedArgs.Error);
         nodeBFailedArgs.Context.ShouldBeSameAs(context);
-        var workflowFailedArgs = recorder.GetEventsOfType<WorkflowExecutionFailedEventArgs>().FirstOrDefault();
-        workflowFailedArgs.ShouldNotBeNull();
-        workflowFailedArgs.FailedNode?.ShouldBeSameAs(nodeB);
-        workflowFailedArgs.Error.ShouldBeOfType<InvalidOperationException>();
-        workflowFailedArgs.Context.ShouldBeSameAs(context);
     }
+
+    // === Async Event Test Scenarios ===
 
     [Fact]
     public async Task RunAsync_SingleAsyncNodeSuccess_RaisesCorrectEventsInOrder()
     {
         // Arrange
-        var mockTraversal = Substitute.For<Nodify.Workflow.Core.Execution.IGraphTraversal>();
+        // Create nodes directly for isolation, don't use SetupAsyncSuccessGraph here
+        var asyncNode1 = new AsyncTestNode(); 
+        var asyncNode2Id = Guid.NewGuid(); // We just need an ID to check against
         var context = new Nodify.Workflow.Core.Execution.Context.ExecutionContext();
+        var runner = new WorkflowRunner(new DefaultNodeExecutor()); 
         var recorder = new EventRecorder();
-        var runner = new WorkflowRunner(new DefaultNodeExecutor(), mockTraversal);
-        var startNode = new TestNode(); // Create nodes specific to test
-        var endNode = new TestNode();
         recorder.Subscribe(runner);
 
-        var asyncNode = new AsyncTestNode("async-1", TimeSpan.FromMilliseconds(50));
-        var nodes = new List<INode> { startNode, asyncNode, endNode };
-        mockTraversal.TopologicalSort(startNode).Returns(nodes);
+        // No connections are made
 
         // Act
-        await runner.RunAsync(startNode, context);
+        await runner.RunAsync(asyncNode1, context);
 
-        // Assert
-        recorder.RecordedEvents.Count.ShouldBe(8);
+        // Assert - Only Node1 should execute
         recorder.WorkflowStartedCount.ShouldBe(1);
+        recorder.NodeStartingCounts.GetValueOrDefault(asyncNode1.Id).ShouldBe(1);
+        recorder.NodeCompletedCounts.GetValueOrDefault(asyncNode1.Id).ShouldBe(1);
+        recorder.NodeFailedCounts.GetValueOrDefault(asyncNode1.Id).ShouldBe(0);
+
+        // Ensure Node 2 did NOT run - Check against the unused ID
+        recorder.NodeStartingCounts.ContainsKey(asyncNode2Id).ShouldBeFalse();
+        recorder.NodeCompletedCounts.ContainsKey(asyncNode2Id).ShouldBeFalse();
+
         recorder.WorkflowCompletedCount.ShouldBe(1);
         recorder.WorkflowFailedCount.ShouldBe(0);
 
-        recorder.NodeStartingCounts.GetValueOrDefault(startNode.Id).ShouldBe(1);
-        recorder.NodeCompletedCounts.GetValueOrDefault(startNode.Id).ShouldBe(1);
-        recorder.NodeFailedCounts.GetValueOrDefault(startNode.Id, 0).ShouldBe(0);
-
-        recorder.NodeStartingCounts.GetValueOrDefault(asyncNode.Id).ShouldBe(1);
-        recorder.NodeCompletedCounts.GetValueOrDefault(asyncNode.Id).ShouldBe(1);
-        recorder.NodeFailedCounts.GetValueOrDefault(asyncNode.Id, 0).ShouldBe(0);
-
-        recorder.NodeStartingCounts.GetValueOrDefault(endNode.Id).ShouldBe(1);
-        recorder.NodeCompletedCounts.GetValueOrDefault(endNode.Id).ShouldBe(1);
-        recorder.NodeFailedCounts.GetValueOrDefault(endNode.Id, 0).ShouldBe(0);
-
+        // Expecting 4 events: WorkflowStart, Node1Start, Node1Complete, WorkflowComplete
+        recorder.RecordedEvents.Count.ShouldBe(4);
         recorder.RecordedEvents[0].ShouldBeOfType<WorkflowExecutionStartedEventArgs>();
-        recorder.RecordedEvents[1].ShouldBeOfType<NodeExecutionStartingEventArgs>().Node.Id.ShouldBe(startNode.Id);
-        recorder.RecordedEvents[2].ShouldBeOfType<NodeExecutionCompletedEventArgs>().Node.Id.ShouldBe(startNode.Id);
-        recorder.RecordedEvents[3].ShouldBeOfType<NodeExecutionStartingEventArgs>().Node.Id.ShouldBe(asyncNode.Id);
-        recorder.RecordedEvents[4].ShouldBeOfType<NodeExecutionCompletedEventArgs>().Node.Id.ShouldBe(asyncNode.Id);
-        recorder.RecordedEvents[5].ShouldBeOfType<NodeExecutionStartingEventArgs>().Node.Id.ShouldBe(endNode.Id);
-        recorder.RecordedEvents[6].ShouldBeOfType<NodeExecutionCompletedEventArgs>().Node.Id.ShouldBe(endNode.Id);
-        recorder.RecordedEvents[7].ShouldBeOfType<WorkflowExecutionCompletedEventArgs>();
-
-        context.TryGetVariable<bool>("async-1_FinishedDelay", out var finished).ShouldBeTrue();
-        finished.ShouldBeTrue();
+        recorder.RecordedEvents[1].ShouldBeOfType<NodeExecutionStartingEventArgs>().Node.Id.ShouldBe(asyncNode1.Id);
+        recorder.RecordedEvents[2].ShouldBeOfType<NodeExecutionCompletedEventArgs>().Node.Id.ShouldBe(asyncNode1.Id);
+        recorder.RecordedEvents[3].ShouldBeOfType<WorkflowExecutionCompletedEventArgs>();
     }
 
     [Fact]
     public async Task RunAsync_SingleAsyncNodeFailureException_RaisesCorrectEvents()
     {
         // Arrange
-        var mockTraversal = Substitute.For<Nodify.Workflow.Core.Execution.IGraphTraversal>();
+        var asyncNode1 = new AsyncTestNode(shouldFail: true, failWithException: true);
         var context = new Nodify.Workflow.Core.Execution.Context.ExecutionContext();
+        var runner = new WorkflowRunner(new DefaultNodeExecutor());
         var recorder = new EventRecorder();
-        var runner = new WorkflowRunner(new DefaultNodeExecutor(), mockTraversal);
-        var startNode = new TestNode();
         recorder.Subscribe(runner);
 
-        var exceptionToThrow = new SimulatedAsyncException("Async failure via exception");
-        var failingAsyncNode = new AsyncTestNode(
-            id: "async-fail-ex", delay: TimeSpan.FromMilliseconds(50),
-            shouldSucceed: false, throwException: true, exceptionToUse: exceptionToThrow);
-        var shouldNotRunNode = new TestNode();
-        var nodes = new List<INode> { startNode, failingAsyncNode, shouldNotRunNode };
-        mockTraversal.TopologicalSort(startNode).Returns(nodes);
-
         // Act
-        await runner.RunAsync(startNode, context);
+        await runner.RunAsync(asyncNode1, context);
 
         // Assert
-        recorder.RecordedEvents.Count.ShouldBe(6);
         recorder.WorkflowStartedCount.ShouldBe(1);
-        recorder.WorkflowCompletedCount.ShouldBe(0);
+        recorder.NodeStartingCounts.GetValueOrDefault(asyncNode1.Id).ShouldBe(1);
+        recorder.NodeFailedCounts.GetValueOrDefault(asyncNode1.Id).ShouldBe(1);
+        recorder.NodeCompletedCounts.GetValueOrDefault(asyncNode1.Id).ShouldBe(0);
         recorder.WorkflowFailedCount.ShouldBe(1);
-        recorder.NodeStartingCounts.GetValueOrDefault(startNode.Id).ShouldBe(1);
-        recorder.NodeCompletedCounts.GetValueOrDefault(startNode.Id).ShouldBe(1);
-        recorder.NodeFailedCounts.GetValueOrDefault(startNode.Id, 0).ShouldBe(0);
-        recorder.NodeStartingCounts.GetValueOrDefault(failingAsyncNode.Id).ShouldBe(1);
-        recorder.NodeCompletedCounts.GetValueOrDefault(failingAsyncNode.Id, 0).ShouldBe(0);
-        recorder.NodeFailedCounts.GetValueOrDefault(failingAsyncNode.Id).ShouldBe(1);
-        recorder.NodeStartingCounts.GetValueOrDefault(shouldNotRunNode.Id, 0).ShouldBe(0);
-        recorder.NodeCompletedCounts.GetValueOrDefault(shouldNotRunNode.Id, 0).ShouldBe(0);
-        recorder.NodeFailedCounts.GetValueOrDefault(shouldNotRunNode.Id, 0).ShouldBe(0);
+        recorder.WorkflowCompletedCount.ShouldBe(0);
+        recorder.WorkflowCancelledCount.ShouldBe(0);
+
+        // Expect 4 events: WorkflowStart, Node1Start, Node1Fail, WorkflowFail
+        recorder.RecordedEvents.Count.ShouldBe(4); 
         recorder.RecordedEvents[0].ShouldBeOfType<WorkflowExecutionStartedEventArgs>();
-        recorder.RecordedEvents[1].ShouldBeOfType<NodeExecutionStartingEventArgs>().Node.Id.ShouldBe(startNode.Id);
-        recorder.RecordedEvents[2].ShouldBeOfType<NodeExecutionCompletedEventArgs>().Node.Id.ShouldBe(startNode.Id);
-        recorder.RecordedEvents[3].ShouldBeOfType<NodeExecutionStartingEventArgs>().Node.Id.ShouldBe(failingAsyncNode.Id);
-        recorder.RecordedEvents[4].ShouldBeOfType<NodeExecutionFailedEventArgs>().Node.Id.ShouldBe(failingAsyncNode.Id);
-        recorder.RecordedEvents[5].ShouldBeOfType<WorkflowExecutionFailedEventArgs>();
-        var nodeFailedArgs = recorder.GetEventsOfType<NodeExecutionFailedEventArgs>().First(e => e.Node.Id == failingAsyncNode.Id);
-        nodeFailedArgs.Node.ShouldBeSameAs(failingAsyncNode);
-        nodeFailedArgs.Error.ShouldBeSameAs(exceptionToThrow);
-        nodeFailedArgs.Context.ShouldBeSameAs(context);
-        var workflowFailedArgs = recorder.GetEventsOfType<WorkflowExecutionFailedEventArgs>().First();
-        workflowFailedArgs.FailedNode.ShouldBeSameAs(failingAsyncNode);
-        workflowFailedArgs.Error.ShouldBeSameAs(exceptionToThrow);
-        workflowFailedArgs.Context.ShouldBeSameAs(context);
+        recorder.RecordedEvents[1].ShouldBeOfType<NodeExecutionStartingEventArgs>().Node.Id.ShouldBe(asyncNode1.Id);
+        recorder.RecordedEvents[2].ShouldBeOfType<NodeExecutionFailedEventArgs>().Node.Id.ShouldBe(asyncNode1.Id);
+        recorder.RecordedEvents[3].ShouldBeOfType<WorkflowExecutionFailedEventArgs>().FailedNode?.Id.ShouldBe(asyncNode1.Id);
     }
 
     [Fact]
     public async Task RunAsync_SingleAsyncNodeFailureResult_RaisesCorrectEvents()
     {
         // Arrange
-        var mockTraversal = Substitute.For<Nodify.Workflow.Core.Execution.IGraphTraversal>();
+        var asyncNode1 = new AsyncTestNode(shouldFail: true, failWithException: false);
         var context = new Nodify.Workflow.Core.Execution.Context.ExecutionContext();
+        var runner = new WorkflowRunner(new DefaultNodeExecutor());
         var recorder = new EventRecorder();
-        var runner = new WorkflowRunner(new DefaultNodeExecutor(), mockTraversal);
-        var startNode = new TestNode();
         recorder.Subscribe(runner);
 
-        var exceptionToReturn = new SimulatedAsyncException("Async failure via result");
-        var failingAsyncNode = new AsyncTestNode(
-            id: "async-fail-res", delay: TimeSpan.FromMilliseconds(50),
-            shouldSucceed: false, throwException: false, exceptionToUse: exceptionToReturn);
-        var shouldNotRunNode = new TestNode();
-        var nodes = new List<INode> { startNode, failingAsyncNode, shouldNotRunNode };
-        mockTraversal.TopologicalSort(startNode).Returns(nodes);
-
         // Act
-        await runner.RunAsync(startNode, context);
+        await runner.RunAsync(asyncNode1, context);
 
         // Assert
-        recorder.RecordedEvents.Count.ShouldBe(6);
         recorder.WorkflowStartedCount.ShouldBe(1);
-        recorder.WorkflowCompletedCount.ShouldBe(0);
+        recorder.NodeStartingCounts.GetValueOrDefault(asyncNode1.Id).ShouldBe(1);
+        recorder.NodeFailedCounts.GetValueOrDefault(asyncNode1.Id).ShouldBe(1);
+        recorder.NodeCompletedCounts.GetValueOrDefault(asyncNode1.Id).ShouldBe(0);
         recorder.WorkflowFailedCount.ShouldBe(1);
-        recorder.NodeStartingCounts.GetValueOrDefault(startNode.Id).ShouldBe(1);
-        recorder.NodeCompletedCounts.GetValueOrDefault(startNode.Id).ShouldBe(1);
-        recorder.NodeFailedCounts.GetValueOrDefault(startNode.Id, 0).ShouldBe(0);
-        recorder.NodeStartingCounts.GetValueOrDefault(failingAsyncNode.Id).ShouldBe(1);
-        recorder.NodeCompletedCounts.GetValueOrDefault(failingAsyncNode.Id, 0).ShouldBe(0);
-        recorder.NodeFailedCounts.GetValueOrDefault(failingAsyncNode.Id).ShouldBe(1);
-        recorder.NodeStartingCounts.GetValueOrDefault(shouldNotRunNode.Id, 0).ShouldBe(0);
-        recorder.NodeCompletedCounts.GetValueOrDefault(shouldNotRunNode.Id, 0).ShouldBe(0);
-        recorder.NodeFailedCounts.GetValueOrDefault(shouldNotRunNode.Id, 0).ShouldBe(0);
+        recorder.WorkflowCompletedCount.ShouldBe(0);
+        recorder.WorkflowCancelledCount.ShouldBe(0);
+
+        // Expect 4 events: WorkflowStart, Node1Start, Node1Fail, WorkflowFail
+        recorder.RecordedEvents.Count.ShouldBe(4);
         recorder.RecordedEvents[0].ShouldBeOfType<WorkflowExecutionStartedEventArgs>();
-        recorder.RecordedEvents[1].ShouldBeOfType<NodeExecutionStartingEventArgs>().Node.Id.ShouldBe(startNode.Id);
-        recorder.RecordedEvents[2].ShouldBeOfType<NodeExecutionCompletedEventArgs>().Node.Id.ShouldBe(startNode.Id);
-        recorder.RecordedEvents[3].ShouldBeOfType<NodeExecutionStartingEventArgs>().Node.Id.ShouldBe(failingAsyncNode.Id);
-        recorder.RecordedEvents[4].ShouldBeOfType<NodeExecutionFailedEventArgs>().Node.Id.ShouldBe(failingAsyncNode.Id);
-        recorder.RecordedEvents[5].ShouldBeOfType<WorkflowExecutionFailedEventArgs>();
-        var nodeFailedArgs = recorder.GetEventsOfType<NodeExecutionFailedEventArgs>().First(e => e.Node.Id == failingAsyncNode.Id);
-        nodeFailedArgs.Node.ShouldBeSameAs(failingAsyncNode);
-        nodeFailedArgs.Error.ShouldBeSameAs(exceptionToReturn);
-        nodeFailedArgs.Context.ShouldBeSameAs(context);
-        var workflowFailedArgs = recorder.GetEventsOfType<WorkflowExecutionFailedEventArgs>().First();
-        workflowFailedArgs.FailedNode.ShouldBeSameAs(failingAsyncNode);
-        workflowFailedArgs.Error.ShouldBeSameAs(exceptionToReturn);
-        workflowFailedArgs.Context.ShouldBeSameAs(context);
+        recorder.RecordedEvents[1].ShouldBeOfType<NodeExecutionStartingEventArgs>().Node.Id.ShouldBe(asyncNode1.Id);
+        recorder.RecordedEvents[2].ShouldBeOfType<NodeExecutionFailedEventArgs>().Node.Id.ShouldBe(asyncNode1.Id);
+        recorder.RecordedEvents[3].ShouldBeOfType<WorkflowExecutionFailedEventArgs>().FailedNode?.Id.ShouldBe(asyncNode1.Id);
     }
 
     [Fact]
     public async Task RunAsync_MultipleSequentialAsyncNodes_RaisesCorrectEventsInOrder()
     {
         // Arrange
-        var mockTraversal = Substitute.For<Nodify.Workflow.Core.Execution.IGraphTraversal>();
-        var context = new Nodify.Workflow.Core.Execution.Context.ExecutionContext();
+        var (graph, context, asyncNode1, asyncNode2) = SetupAsyncSuccessGraph();
+        var runner = new WorkflowRunner(new DefaultNodeExecutor());
         var recorder = new EventRecorder();
-        var runner = new WorkflowRunner(new DefaultNodeExecutor(), mockTraversal);
-        var startNode = new TestNode();
-        var endNode = new TestNode();
         recorder.Subscribe(runner);
 
-        var asyncNode1 = new AsyncTestNode("async-seq-1", TimeSpan.FromMilliseconds(50));
-        var asyncNode2 = new AsyncTestNode("async-seq-2", TimeSpan.FromMilliseconds(75));
-        var nodes = new List<INode> { startNode, asyncNode1, asyncNode2, endNode };
-        mockTraversal.TopologicalSort(startNode).Returns(nodes);
-
-        var stopwatch = System.Diagnostics.Stopwatch.StartNew();
-
-        // Act
-        await runner.RunAsync(startNode, context);
-        stopwatch.Stop();
+        // Connect Node1 -> Node2 (assuming single output activation)
+        await runner.RunAsync(asyncNode1, context);
 
         // Assert
-        recorder.RecordedEvents.Count.ShouldBe(10);
         recorder.WorkflowStartedCount.ShouldBe(1);
-        recorder.WorkflowCompletedCount.ShouldBe(1);
-        recorder.WorkflowFailedCount.ShouldBe(0);
-        recorder.NodeStartingCounts.GetValueOrDefault(startNode.Id).ShouldBe(1);
-        recorder.NodeCompletedCounts.GetValueOrDefault(startNode.Id).ShouldBe(1);
         recorder.NodeStartingCounts.GetValueOrDefault(asyncNode1.Id).ShouldBe(1);
         recorder.NodeCompletedCounts.GetValueOrDefault(asyncNode1.Id).ShouldBe(1);
         recorder.NodeStartingCounts.GetValueOrDefault(asyncNode2.Id).ShouldBe(1);
         recorder.NodeCompletedCounts.GetValueOrDefault(asyncNode2.Id).ShouldBe(1);
-        recorder.NodeStartingCounts.GetValueOrDefault(endNode.Id).ShouldBe(1);
-        recorder.NodeCompletedCounts.GetValueOrDefault(endNode.Id).ShouldBe(1);
+        recorder.WorkflowCompletedCount.ShouldBe(1);
+        recorder.WorkflowFailedCount.ShouldBe(0);
+
+        // Expect 6 events: WorkflowStart, N1Start, N1Complete, N2Start, N2Complete, WorkflowComplete
+        recorder.RecordedEvents.Count.ShouldBe(6);
         recorder.RecordedEvents[0].ShouldBeOfType<WorkflowExecutionStartedEventArgs>();
-        recorder.RecordedEvents[1].ShouldBeOfType<NodeExecutionStartingEventArgs>().Node.Id.ShouldBe(startNode.Id);
-        recorder.RecordedEvents[2].ShouldBeOfType<NodeExecutionCompletedEventArgs>().Node.Id.ShouldBe(startNode.Id);
-        recorder.RecordedEvents[3].ShouldBeOfType<NodeExecutionStartingEventArgs>().Node.Id.ShouldBe(asyncNode1.Id);
-        recorder.RecordedEvents[4].ShouldBeOfType<NodeExecutionCompletedEventArgs>().Node.Id.ShouldBe(asyncNode1.Id);
-        recorder.RecordedEvents[5].ShouldBeOfType<NodeExecutionStartingEventArgs>().Node.Id.ShouldBe(asyncNode2.Id);
-        recorder.RecordedEvents[6].ShouldBeOfType<NodeExecutionCompletedEventArgs>().Node.Id.ShouldBe(asyncNode2.Id);
-        recorder.RecordedEvents[7].ShouldBeOfType<NodeExecutionStartingEventArgs>().Node.Id.ShouldBe(endNode.Id);
-        recorder.RecordedEvents[8].ShouldBeOfType<NodeExecutionCompletedEventArgs>().Node.Id.ShouldBe(endNode.Id);
-        recorder.RecordedEvents[9].ShouldBeOfType<WorkflowExecutionCompletedEventArgs>();
-        stopwatch.ElapsedMilliseconds.ShouldBeGreaterThanOrEqualTo(125);
-        stopwatch.ElapsedMilliseconds.ShouldBeLessThan(1000);
+        recorder.RecordedEvents[1].ShouldBeOfType<NodeExecutionStartingEventArgs>().Node.Id.ShouldBe(asyncNode1.Id);
+        recorder.RecordedEvents[2].ShouldBeOfType<NodeExecutionCompletedEventArgs>().Node.Id.ShouldBe(asyncNode1.Id);
+        recorder.RecordedEvents[3].ShouldBeOfType<NodeExecutionStartingEventArgs>().Node.Id.ShouldBe(asyncNode2.Id);
+        recorder.RecordedEvents[4].ShouldBeOfType<NodeExecutionCompletedEventArgs>().Node.Id.ShouldBe(asyncNode2.Id);
+        recorder.RecordedEvents[5].ShouldBeOfType<WorkflowExecutionCompletedEventArgs>();
     }
 
     [Fact]
-    public async Task RunAsync_CancellationBeforeStart_ShouldNotRunAndSetCancelledStatus()
+    public async Task RunAsync_AsyncNodeActivatesOutput_NextNodeRuns()
     {
-        // Arrange
-        var mockTraversal = Substitute.For<Nodify.Workflow.Core.Execution.IGraphTraversal>();
+         // Arrange
+        var graph = new Graph();
         var context = new Nodify.Workflow.Core.Execution.Context.ExecutionContext();
+        
+        // Create nodes
+        var asyncNode1 = new AsyncTestNode(); // Use constructor without ID
+        graph.AddNode(asyncNode1);
+        var nextNode = new TestNode();
+        graph.AddNode(nextNode);
+
+        // Get the connector added by AsyncTestNode constructor
+        var output1 = asyncNode1.OutputConnectors.FirstOrDefault();
+        output1.ShouldNotBeNull("AsyncTestNode should have a default output connector.");
+        
+        // Add input for nextNode
+        var inputNext = new Connector(nextNode, ConnectorDirection.Input, typeof(object));
+        if (nextNode is TestNode realTestNode) realTestNode.AddInputConnector(inputNext);
+
+        // Connect using graph
+        graph.AddConnection(output1, inputNext); 
+        
+        // Set the ID to activate on the node instance
+        asyncNode1.OutputConnectorIdToActivate = output1.Id;
+
+        var runner = new WorkflowRunner(new DefaultNodeExecutor());
         var recorder = new EventRecorder();
-        var runner = new WorkflowRunner(new DefaultNodeExecutor(), mockTraversal);
-        var startNode = new TestNode();
-        var middleNode = new TestNode(); // Keep nodes local to test
-        var endNode = new TestNode();
         recorder.Subscribe(runner);
+       
+        // Act
+        await runner.RunAsync(asyncNode1, context);
 
-        var cts = new CancellationTokenSource();
-        cts.Cancel(); // Cancel immediately
-        var cancelledToken = cts.Token;
-
-        mockTraversal.TopologicalSort(startNode).Returns(new List<INode> { startNode, middleNode, endNode });
-
-        // Act - No exception should escape RunAsync
-        await runner.RunAsync(startNode, context, cancelledToken);
-
-        // Assert - Updated assertions
-        recorder.RecordedEvents.Count.ShouldBe(0);
-        recorder.WorkflowStartedCount.ShouldBe(0);
-        recorder.WorkflowCompletedCount.ShouldBe(0);
+        // Assert (Should now pass)
+        recorder.WorkflowStartedCount.ShouldBe(1);
+        recorder.NodeStartingCounts.GetValueOrDefault(asyncNode1.Id).ShouldBe(1);
+        recorder.NodeCompletedCounts.GetValueOrDefault(asyncNode1.Id).ShouldBe(1);
+        recorder.NodeStartingCounts.GetValueOrDefault(nextNode.Id).ShouldBe(1);
+        recorder.NodeCompletedCounts.GetValueOrDefault(nextNode.Id).ShouldBe(1);
+        recorder.WorkflowCompletedCount.ShouldBe(1);
         recorder.WorkflowFailedCount.ShouldBe(0);
-        recorder.WorkflowCancelledCount.ShouldBe(0); // WorkflowCancelled is not raised if RunAsync returns early
-
-        recorder.NodeStartingCounts.Count.ShouldBe(0);
-        recorder.NodeCompletedCounts.Count.ShouldBe(0);
-        recorder.NodeFailedCounts.Count.ShouldBe(0);
-
-        // Verify final status is Cancelled
-        context.CurrentStatus.ShouldBe(Nodify.Workflow.Core.Execution.Context.ExecutionStatus.Cancelled);
+        recorder.RecordedEvents.Count.ShouldBe(6);
     }
 
     [Fact]
     public async Task RunAsync_CancellationDuringAsyncNodeDelay_ShouldStopAndSetCancelledStatus()
     {
         // Arrange
-        var mockTraversal = Substitute.For<Nodify.Workflow.Core.Execution.IGraphTraversal>();
+        var longDelay = TimeSpan.FromSeconds(2); 
+        var longAsyncNode = new AsyncTestNode(delay: longDelay);
+        var nextNode = new TestNode();
+        
+        var graph = new Graph();
         var context = new Nodify.Workflow.Core.Execution.Context.ExecutionContext();
-        var recorder = new EventRecorder();
-        var runner = new WorkflowRunner(new DefaultNodeExecutor(), mockTraversal);
-        var startNode = new TestNode();
-        var endNode = new TestNode(); // Should not run
-        recorder.Subscribe(runner);
+        graph.AddNode(longAsyncNode);
+        graph.AddNode(nextNode);
 
-        // Use a node that delays long enough to be cancelled during the delay
-        var longAsyncNode = new AsyncTestNode("long-async", TimeSpan.FromMilliseconds(500));
-        var nodes = new List<INode> { startNode, longAsyncNode, endNode };
-        mockTraversal.TopologicalSort(startNode).Returns(nodes);
+        var output1 = longAsyncNode.OutputConnectors.FirstOrDefault();
+        if (output1 == null) 
+        {
+            output1 = new Connector(longAsyncNode, ConnectorDirection.Output, typeof(object));
+            longAsyncNode.AddOutputConnector(output1);
+        }
+        var inputNext = new Connector(nextNode, ConnectorDirection.Input, typeof(object));
+        if (nextNode is TestNode realTestNode) realTestNode.AddInputConnector(inputNext);
+        
+        graph.AddConnection(output1, inputNext);
+
+        var runner = new WorkflowRunner(new DefaultNodeExecutor());
+        var recorder = new EventRecorder();
+        recorder.Subscribe(runner);
 
         var cts = new CancellationTokenSource();
 
         // Act
-        // Start the task but don't await it yet
-        var runTask = runner.RunAsync(startNode, context, cts.Token);
+        var runTask = runner.RunAsync(longAsyncNode, context, cts.Token);
 
-        // Wait long enough for the start node to complete and the async node to start delaying
-        await Task.Delay(100); // Adjust if needed, must be < longAsyncNode delay
-
-        // Cancel while the async node is (likely) in its Task.Delay
+        await Task.Delay(50); 
         cts.Cancel();
 
-        // Now await the task - it should complete quickly due to cancellation
-        // Use try/catch as the OCE might propagate depending on exact timing and runner implementation
-        try
-        {
-            await runTask;
-        }
-        catch (OperationCanceledException)
-        {
-            // Expected behaviour if OCE propagates
-        }
+        await runTask;
 
         // Assert
-        // Workflow starts, start node runs, async node starts but doesn't complete
+        context.CurrentStatus.ShouldBe(ExecutionStatus.Cancelled);
         recorder.WorkflowStartedCount.ShouldBe(1);
-        recorder.NodeStartingCounts.GetValueOrDefault(startNode.Id).ShouldBe(1);
-        recorder.NodeCompletedCounts.GetValueOrDefault(startNode.Id).ShouldBe(1);
         recorder.NodeStartingCounts.GetValueOrDefault(longAsyncNode.Id).ShouldBe(1);
-        recorder.NodeCompletedCounts.GetValueOrDefault(longAsyncNode.Id, 0).ShouldBe(0); // Did not complete
-        recorder.NodeFailedCounts.GetValueOrDefault(longAsyncNode.Id, 0).ShouldBe(0); // Was cancelled, not failed
-        recorder.NodeStartingCounts.GetValueOrDefault(endNode.Id, 0).ShouldBe(0); // Did not start
+        recorder.NodeCompletedCounts.GetValueOrDefault(longAsyncNode.Id).ShouldBe(0);
+        recorder.NodeFailedCounts.GetValueOrDefault(longAsyncNode.Id).ShouldBe(0);
+        recorder.NodeStartingCounts.GetValueOrDefault(nextNode.Id).ShouldBe(0);
         recorder.WorkflowCompletedCount.ShouldBe(0);
         recorder.WorkflowFailedCount.ShouldBe(0);
         recorder.WorkflowCancelledCount.ShouldBe(1);
-
-        recorder.RecordedEvents.Count.ShouldBe(5); // StartWF, StartS, StartC, AsyncS, CancelWF
+        recorder.RecordedEvents.Count.ShouldBe(3);
         recorder.RecordedEvents[0].ShouldBeOfType<WorkflowExecutionStartedEventArgs>();
-        recorder.RecordedEvents[1].ShouldBeOfType<NodeExecutionStartingEventArgs>().Node.Id.ShouldBe(startNode.Id);
-        recorder.RecordedEvents[2].ShouldBeOfType<NodeExecutionCompletedEventArgs>().Node.Id.ShouldBe(startNode.Id);
-        recorder.RecordedEvents[3].ShouldBeOfType<NodeExecutionStartingEventArgs>().Node.Id.ShouldBe(longAsyncNode.Id);
-        recorder.RecordedEvents[4].ShouldBeOfType<WorkflowCancelledEventArgs>();
-
-        // Verify final status is Cancelled
-        context.CurrentStatus.ShouldBe(Nodify.Workflow.Core.Execution.Context.ExecutionStatus.Cancelled);
+        recorder.RecordedEvents[1].ShouldBeOfType<NodeExecutionStartingEventArgs>().Node.Id.ShouldBe(longAsyncNode.Id);
+        recorder.RecordedEvents[2].ShouldBeOfType<WorkflowCancelledEventArgs>();
     }
 
     [Fact]
     public async Task RunAsync_CancellationBetweenNodes_ShouldStopAndSetCancelledStatus()
     {
         // Arrange
-        var mockTraversal = Substitute.For<Nodify.Workflow.Core.Execution.IGraphTraversal>();
-        var context = new Nodify.Workflow.Core.Execution.Context.ExecutionContext();
-        var recorder = new EventRecorder();
-        var runner = new WorkflowRunner(new DefaultNodeExecutor(), mockTraversal);
-        var startNode = new TestNode();
-        var endNode = new TestNode(); // Should not run
-        recorder.Subscribe(runner);
+        var asyncNode1 = new AsyncTestNode(TimeSpan.FromMilliseconds(10));
+        var asyncNode2 = new AsyncTestNode(TimeSpan.FromMilliseconds(100));
 
-        // Use two async nodes
-        var asyncNode1 = new AsyncTestNode("async-between-1", TimeSpan.FromMilliseconds(50));
-        var asyncNode2 = new AsyncTestNode("async-between-2", TimeSpan.FromMilliseconds(200)); // Longer delay
-        var nodes = new List<INode> { startNode, asyncNode1, asyncNode2, endNode };
-        mockTraversal.TopologicalSort(startNode).Returns(nodes);
+        var graph = new Graph();
+        var context = new Nodify.Workflow.Core.Execution.Context.ExecutionContext();
+        graph.AddNode(asyncNode1);
+        graph.AddNode(asyncNode2);
+        
+        var output1 = asyncNode1.OutputConnectors.FirstOrDefault();
+        if (output1 == null) 
+        {
+            output1 = new Connector(asyncNode1, ConnectorDirection.Output, typeof(object));
+            asyncNode1.AddOutputConnector(output1);
+        }
+        var input2 = new Connector(asyncNode2, ConnectorDirection.Input, typeof(object));
+        asyncNode2.AddInputConnector(input2);
+
+        graph.AddConnection(output1, input2);
+
+        var runner = new WorkflowRunner(new DefaultNodeExecutor());
+        var recorder = new EventRecorder();
+        recorder.Subscribe(runner);
 
         var cts = new CancellationTokenSource();
 
+        runner.NodeCompleted += (s, e) =>
+        {
+            if (e.Node.Id == asyncNode1.Id)
+            {
+                cts.Cancel();
+            }
+        };
+
         // Act
-        // Start the task but don't await it yet
-        var runTask = runner.RunAsync(startNode, context, cts.Token);
-
-        // Wait long enough for asyncNode1 to complete, and asyncNode2 to start delaying
-        await Task.Delay(100); // > asyncNode1 delay, < asyncNode2 delay
-
-        // Cancel while asyncNode2 is (likely) in its Task.Delay
-        cts.Cancel();
-
-        // Await the task
-        try { await runTask; } catch (OperationCanceledException) { /* Expected */ }
+        await runner.RunAsync(asyncNode1, context, cts.Token);
 
         // Assert
-        // Workflow starts, start node runs, asyncNode1 runs, asyncNode2 starts but is cancelled
+        context.CurrentStatus.ShouldBe(ExecutionStatus.Cancelled);
         recorder.WorkflowStartedCount.ShouldBe(1);
-        recorder.NodeStartingCounts.GetValueOrDefault(startNode.Id).ShouldBe(1);
-        recorder.NodeCompletedCounts.GetValueOrDefault(startNode.Id).ShouldBe(1);
         recorder.NodeStartingCounts.GetValueOrDefault(asyncNode1.Id).ShouldBe(1);
         recorder.NodeCompletedCounts.GetValueOrDefault(asyncNode1.Id).ShouldBe(1);
-        recorder.NodeStartingCounts.GetValueOrDefault(asyncNode2.Id).ShouldBe(1); // Started
-        recorder.NodeCompletedCounts.GetValueOrDefault(asyncNode2.Id, 0).ShouldBe(0); // Did not complete
-        recorder.NodeFailedCounts.GetValueOrDefault(asyncNode2.Id, 0).ShouldBe(0); // Cancelled, not failed
-        recorder.NodeStartingCounts.GetValueOrDefault(endNode.Id, 0).ShouldBe(0); // Did not start
+        recorder.NodeStartingCounts.GetValueOrDefault(asyncNode2.Id).ShouldBe(0);
+        recorder.NodeCompletedCounts.GetValueOrDefault(asyncNode2.Id).ShouldBe(0);
         recorder.WorkflowCompletedCount.ShouldBe(0);
         recorder.WorkflowFailedCount.ShouldBe(0);
         recorder.WorkflowCancelledCount.ShouldBe(1);
-
-        // StartWF, StartS, StartC, Async1S, Async1C, Async2S, CancelWF
-        recorder.RecordedEvents.Count.ShouldBe(7);
+        recorder.RecordedEvents.Count.ShouldBe(4);
         recorder.RecordedEvents[0].ShouldBeOfType<WorkflowExecutionStartedEventArgs>();
-        recorder.RecordedEvents[1].ShouldBeOfType<NodeExecutionStartingEventArgs>().Node.Id.ShouldBe(startNode.Id);
-        recorder.RecordedEvents[2].ShouldBeOfType<NodeExecutionCompletedEventArgs>().Node.Id.ShouldBe(startNode.Id);
-        recorder.RecordedEvents[3].ShouldBeOfType<NodeExecutionStartingEventArgs>().Node.Id.ShouldBe(asyncNode1.Id);
-        recorder.RecordedEvents[4].ShouldBeOfType<NodeExecutionCompletedEventArgs>().Node.Id.ShouldBe(asyncNode1.Id);
-        recorder.RecordedEvents[5].ShouldBeOfType<NodeExecutionStartingEventArgs>().Node.Id.ShouldBe(asyncNode2.Id);
-        recorder.RecordedEvents[6].ShouldBeOfType<WorkflowCancelledEventArgs>();
-
-        // Verify final status is Cancelled
-        context.CurrentStatus.ShouldBe(Nodify.Workflow.Core.Execution.Context.ExecutionStatus.Cancelled);
+        recorder.RecordedEvents[1].ShouldBeOfType<NodeExecutionStartingEventArgs>().Node.Id.ShouldBe(asyncNode1.Id);
+        recorder.RecordedEvents[2].ShouldBeOfType<NodeExecutionCompletedEventArgs>().Node.Id.ShouldBe(asyncNode1.Id);
+        recorder.RecordedEvents[3].ShouldBeOfType<WorkflowCancelledEventArgs>();
     }
-
+    
     [Fact]
     public async Task RunAsync_NoCancellation_ShouldCompleteNormally()
     {
         // Arrange
-        var mockTraversal = Substitute.For<Nodify.Workflow.Core.Execution.IGraphTraversal>();
-        var context = new Nodify.Workflow.Core.Execution.Context.ExecutionContext();
+        var (graph, context, asyncNode1, asyncNode2) = SetupAsyncSuccessGraph();
+        var runner = new WorkflowRunner(new DefaultNodeExecutor());
         var recorder = new EventRecorder();
-        var runner = new WorkflowRunner(new DefaultNodeExecutor(), mockTraversal);
-        var startNode = new TestNode();
-        var endNode = new TestNode();
         recorder.Subscribe(runner);
+        var cts = new CancellationTokenSource(); // No cancellation triggered
 
-        var asyncNode1 = new AsyncTestNode("normal-async-1", TimeSpan.FromMilliseconds(20));
-        var asyncNode2 = new AsyncTestNode("normal-async-2", TimeSpan.FromMilliseconds(30));
-        var nodes = new List<INode> { startNode, asyncNode1, asyncNode2, endNode };
-        mockTraversal.TopologicalSort(startNode).Returns(nodes);
+        await runner.RunAsync(asyncNode1, context, cts.Token);
 
-        // Act - Use default token (CancellationToken.None)
-        await runner.RunAsync(startNode, context); // Or pass CancellationToken.None explicitly
-
-        // Assert - Normal completion
-        recorder.WorkflowStartedCount.ShouldBe(1);
-        recorder.WorkflowCompletedCount.ShouldBe(1);
-        recorder.WorkflowFailedCount.ShouldBe(0);
+        // Assert
+        context.CurrentStatus.ShouldBe(ExecutionStatus.Completed);
         recorder.WorkflowCancelledCount.ShouldBe(0);
-
-        recorder.NodeStartingCounts.GetValueOrDefault(startNode.Id).ShouldBe(1);
-        recorder.NodeCompletedCounts.GetValueOrDefault(startNode.Id).ShouldBe(1);
         recorder.NodeStartingCounts.GetValueOrDefault(asyncNode1.Id).ShouldBe(1);
         recorder.NodeCompletedCounts.GetValueOrDefault(asyncNode1.Id).ShouldBe(1);
         recorder.NodeStartingCounts.GetValueOrDefault(asyncNode2.Id).ShouldBe(1);
         recorder.NodeCompletedCounts.GetValueOrDefault(asyncNode2.Id).ShouldBe(1);
-        recorder.NodeStartingCounts.GetValueOrDefault(endNode.Id).ShouldBe(1);
-        recorder.NodeCompletedCounts.GetValueOrDefault(endNode.Id).ShouldBe(1);
-
-        recorder.RecordedEvents.Count.ShouldBe(10); // Same as multiple sequential async test
-        recorder.RecordedEvents.Last().ShouldBeOfType<WorkflowExecutionCompletedEventArgs>();
-
-        context.CurrentStatus.ShouldBe(Nodify.Workflow.Core.Execution.Context.ExecutionStatus.Completed);
+        recorder.WorkflowCompletedCount.ShouldBe(1);
     }
 } 

@@ -38,7 +38,7 @@ public class IfElseNode : Node
         _flowInputId = flowIn.Id;
         AddInputConnector(flowIn);
 
-        // Outputs
+        // Outputs - Add true output first to match test expectations
         var trueOut = new Connector(this, ConnectorDirection.Output, typeof(object));
         _trueOutputId = trueOut.Id;
         AddOutputConnector(trueOut);
@@ -46,23 +46,28 @@ public class IfElseNode : Node
         var falseOut = new Connector(this, ConnectorDirection.Output, typeof(object));
         _falseOutputId = falseOut.Id;
         AddOutputConnector(falseOut);
+        Debug.WriteLine($"[IfElseNode Constructor] True Output ID: {_trueOutputId}, False Output ID: {_falseOutputId}"); // DEBUG
     }
 
     public override Task<NodeExecutionResult> ExecuteAsync(IExecutionContext context, object? inputData, CancellationToken cancellationToken)
     {
+        Debug.WriteLine($"[IfElseNode ExecuteAsync Start] Variable: {InputVariableName}"); // DEBUG
         // InputData is ignored by IfElseNode as it primarily controls flow based on context variables.
 
         // 1. Validate Input Variable Name
         if (string.IsNullOrWhiteSpace(InputVariableName))
         {
+            Debug.WriteLine("[IfElseNode ExecuteAsync] Error: InputVariableName is empty."); // DEBUG
             return Task.FromResult(NodeExecutionResult.Failed(new InvalidOperationException("InputVariableName property cannot be empty.")));
         }
 
         // 2. Get Target Object from Context
         if (!context.TryGetVariable<object>(InputVariableName, out var targetObject))
         {
+             Debug.WriteLine($"[IfElseNode ExecuteAsync] Error: Variable '{InputVariableName}' not found."); // DEBUG
              return Task.FromResult(NodeExecutionResult.Failed(new KeyNotFoundException($"Input variable '{InputVariableName}' not found in the execution context.")));
         }
+        Debug.WriteLine($"[IfElseNode ExecuteAsync] Input Value: {targetObject ?? "null"}"); // DEBUG
         
         // Handle null target object if necessary - depends on rules
         // NullConditionRule handles null target object implicitly. Others might need it.
@@ -74,18 +79,20 @@ public class IfElseNode : Node
         {
             // Default behavior for empty conditions
             overallResult = (ConditionLogic == ConditionCombinationLogic.And); // AND logic defaults true, OR defaults false
-            Debug.WriteLine($"IfElseNode: No conditions specified. Defaulting to {overallResult} based on {ConditionLogic} logic.");
+            Debug.WriteLine($"[IfElseNode ExecuteAsync] No conditions. Logic: {ConditionLogic}, Result: {overallResult}"); // DEBUG
         }
         else
         {
             // Initialize based on logic
             overallResult = (ConditionLogic == ConditionCombinationLogic.And); 
+            Debug.WriteLine($"[IfElseNode ExecuteAsync] Evaluating {Conditions.Count} condition(s) with {ConditionLogic} logic. Initial result: {overallResult}"); // DEBUG
 
             foreach (var rule in Conditions)
             {
                 // Resolve property path for the current rule
                 if (!PropertyPathResolver.TryResolvePath(targetObject, rule.PropertyPath, out var propertyValue, out string? resolveError))
                 {
+                    Debug.WriteLine($"[IfElseNode ExecuteAsync] Error resolving path '{rule.PropertyPath}': {resolveError}"); // DEBUG
                     return Task.FromResult(NodeExecutionResult.Failed(new InvalidOperationException($"Error resolving property path '{rule.PropertyPath}': {resolveError}")));
                 }
 
@@ -94,9 +101,11 @@ public class IfElseNode : Node
                 try
                 {
                     ruleResult = rule.Evaluate(propertyValue);
+                    Debug.WriteLine($"[IfElseNode ExecuteAsync] Rule '{rule.GetType().Name}' (Path: '{rule.PropertyPath}') evaluated '{propertyValue}' -> {ruleResult}"); // DEBUG
                 }
                 catch(Exception ex)
                 {
+                    Debug.WriteLine($"[IfElseNode ExecuteAsync] Error evaluating rule '{rule.GetType().Name}' for path '{rule.PropertyPath}': {ex.Message}"); // DEBUG
                     // Catch unexpected errors during rule evaluation
                      return Task.FromResult(NodeExecutionResult.Failed(new InvalidOperationException($"Error evaluating condition for path '{rule.PropertyPath}': {ex.Message}", ex)));
                 }
@@ -107,8 +116,10 @@ public class IfElseNode : Node
                     if (!ruleResult) // In AND, if any is false, overall is false
                     {
                         overallResult = false;
+                        Debug.WriteLine("[IfElseNode ExecuteAsync] AND logic: Rule false, overall result set to false. Breaking loop."); // DEBUG
                         break; 
                     }
+                    Debug.WriteLine("[IfElseNode ExecuteAsync] AND logic: Rule true, continuing."); // DEBUG
                     // If rule is true, continue checking (overallResult remains true initially)
                 }
                 else // OR Logic
@@ -116,15 +127,19 @@ public class IfElseNode : Node
                     if (ruleResult) // In OR, if any is true, overall is true
                     {
                         overallResult = true;
+                        Debug.WriteLine("[IfElseNode ExecuteAsync] OR logic: Rule true, overall result set to true. Breaking loop."); // DEBUG
                         break; 
                     }
+                    Debug.WriteLine("[IfElseNode ExecuteAsync] OR logic: Rule false, continuing."); // DEBUG
                     // If rule is false, continue checking (overallResult remains false initially)
                 }
             }
+             Debug.WriteLine($"[IfElseNode ExecuteAsync] Final condition evaluation result: {overallResult}"); // DEBUG
         }
 
         // 4. Return result activating the correct branch (no output data)
         Guid connectorToActivate = overallResult ? _trueOutputId : _falseOutputId;
+        Debug.WriteLine($"[IfElseNode ExecuteAsync End] Overall Result: {overallResult}. Activating Connector ID: {connectorToActivate} (True ID: {_trueOutputId}, False ID: {_falseOutputId})"); // DEBUG
         return Task.FromResult(NodeExecutionResult.Succeeded(connectorToActivate));
     }
 } 
