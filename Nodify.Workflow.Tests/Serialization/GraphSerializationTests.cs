@@ -128,36 +128,74 @@ public class GraphJsonConverter : JsonConverter<Graph>
                     var type = SerializationTypeMap.GetType(typeId!);
                     if (type != null)
                     {
-                        // Create a new JsonSerializerOptions without our custom converter
-                        // to avoid infinite recursion
-                        var nodeOptions = new JsonSerializerOptions(options);
-                        var converters = nodeOptions.Converters.ToList();
-                        converters.RemoveAll(c => c is GraphJsonConverter);
-                        nodeOptions.Converters.Clear();
-                        foreach (var converter in converters)
-                        {
-                            nodeOptions.Converters.Add(converter);
-                        }
-
                         // Create an instance with the correct ID
                         var nodeId = Guid.Parse(idElement.GetString()!);
-                        var node = (INode)Activator.CreateInstance(type, nodeId)!;
-
-                        // Deserialize the properties into a new instance
-                        var tempNode = (INode)JsonSerializer.Deserialize(nodeElement.GetRawText(), type, nodeOptions)!;
-
-                        // Copy properties from tempNode to node (except Id which we want to preserve)
-                        foreach (var property in type.GetProperties())
+                        INode node;
+                        try
                         {
-                            if (property.Name != nameof(INode.Id) && property.CanWrite)
+                            // Try to create instance with Guid constructor
+                            node = (INode)Activator.CreateInstance(type, nodeId)!;
+                        }
+                        catch (MissingMethodException)
+                        {
+                            // If no Guid constructor exists, use parameterless constructor
+                            node = (INode)Activator.CreateInstance(type)!;
+                            // Set the Id using reflection
+                            var idProperty = type.GetProperty(nameof(INode.Id));
+                            if (idProperty?.CanWrite == true)
                             {
-                                var value = property.GetValue(tempNode);
-                                property.SetValue(node, value);
+                                idProperty.SetValue(node, nodeId);
+                            }
+                        }
+
+                        // Handle input connectors
+                        if (nodeElement.TryGetProperty("inputs", out var inputsElement))
+                        {
+                            foreach (var connectorElement in inputsElement.EnumerateArray())
+                            {
+                                var connectorId = Guid.Parse(connectorElement.GetProperty("id").GetString()!);
+                                var dataTypeName = connectorElement.GetProperty("dataType").GetString()!;
+                                var dataType = Type.GetType(dataTypeName) ?? typeof(object);
+
+                                // Check if a connector with this ID already exists
+                                var existingConnector = node.InputConnectors.FirstOrDefault(c => c.Id == connectorId);
+                                if (existingConnector == null)
+                                {
+                                    var connector = new Connector(node, ConnectorDirection.Input, dataType, connectorId);
+                                    node.AddInputConnector(connector);
+                                }
+                            }
+                        }
+
+                        // Handle output connectors
+                        if (nodeElement.TryGetProperty("outputs", out var outputsElement))
+                        {
+                            foreach (var connectorElement in outputsElement.EnumerateArray())
+                            {
+                                var connectorId = Guid.Parse(connectorElement.GetProperty("id").GetString()!);
+                                var dataTypeName = connectorElement.GetProperty("dataType").GetString()!;
+                                var dataType = Type.GetType(dataTypeName) ?? typeof(object);
+
+                                // Check if a connector with this ID already exists
+                                var existingConnector = node.OutputConnectors.FirstOrDefault(c => c.Id == connectorId);
+                                if (existingConnector == null)
+                                {
+                                    var connector = new Connector(node, ConnectorDirection.Output, dataType, connectorId);
+                                    node.AddOutputConnector(connector);
+                                }
                             }
                         }
 
                         graph.AddNode(node);
                     }
+                    else
+                    {
+                        throw new KeyNotFoundException($"Node type '{typeId}' not found in type map.");
+                    }
+                }
+                else
+                {
+                    throw new JsonException("Node is missing required 'type' or 'id' property.");
                 }
             }
         }
@@ -205,6 +243,9 @@ public class GraphJsonConverter : JsonConverter<Graph>
     public override void Write(Utf8JsonWriter writer, Graph value, JsonSerializerOptions options)
     {
         writer.WriteStartObject();
+
+        // Write version information
+        writer.WriteString("$version", "1.0");
 
         // Write type information
         writer.WriteString("type", SerializationTypeMap.GetTypeId(typeof(Graph)));
@@ -398,5 +439,193 @@ public class GraphSerializationTests
         var connector = node.InputConnectors.First();
         connector.Id.ToString().ShouldBe("87654321-4321-4321-4321-987654321098");
         connector.DataType.ShouldBe(typeof(object));
+    }
+
+    [Fact]
+    public void Serialize_ShouldIncludeVersion()
+    {
+        // Arrange
+        var graph = new Graph();
+        var options = SerializationFactory.CreateOptions();
+
+        // Act
+        var json = JsonSerializer.Serialize(graph, options);
+        var jsonDoc = JsonDocument.Parse(json);
+
+        // Assert
+        jsonDoc.RootElement.TryGetProperty("$version", out var versionElement).ShouldBeTrue();
+        versionElement.GetString().ShouldNotBeNullOrEmpty();
+    }
+
+    [Fact]
+    public void Deserialize_InvalidJson_ShouldThrowJsonException()
+    {
+        // Arrange
+        var invalidJson = "{ invalid json }";
+        var options = SerializationFactory.CreateOptions();
+
+        // Act & Assert
+        Should.Throw<JsonException>(() => JsonSerializer.Deserialize<Graph>(invalidJson, options));
+    }
+
+    [Fact]
+    public void Deserialize_JsonWithUnknownNodeType_ShouldThrowKeyNotFoundException()
+    {
+        // Arrange
+        var jsonWithUnknownType = @"{
+            ""type"": ""Graph"",
+            ""$version"": ""1.0"",
+            ""nodes"": [{
+                ""type"": ""UnknownNodeType"",
+                ""id"": ""00000000-0000-0000-0000-000000000001"",
+                ""inputs"": [],
+                ""outputs"": []
+            }],
+            ""connections"": []
+        }";
+        var options = SerializationFactory.CreateOptions();
+
+        // Act & Assert
+        Should.Throw<KeyNotFoundException>(() => JsonSerializer.Deserialize<Graph>(jsonWithUnknownType, options));
+    }
+
+    [Fact]
+    public void Deserialize_JsonNodeMissingRequiredProperty_ShouldThrowJsonException()
+    {
+        // Arrange
+        var jsonMissingId = @"{
+            ""type"": ""Graph"",
+            ""$version"": ""1.0"",
+            ""nodes"": [{
+                ""type"": ""InputJsonNode"",
+                ""inputs"": [],
+                ""outputs"": []
+            }],
+            ""connections"": []
+        }";
+        var options = SerializationFactory.CreateOptions();
+
+        // Act & Assert
+        Should.Throw<JsonException>(() => JsonSerializer.Deserialize<Graph>(jsonMissingId, options));
+    }
+
+    [Fact]
+    public void Serialize_GraphWithConnectedNodes_ShouldOutputCorrectJson()
+    {
+        // Arrange
+        var graph = new Graph();
+        
+        // Create input node
+        var inputNode = new InputJsonNode();
+        graph.AddNode(inputNode);
+        
+        // Create output node
+        var outputNode = new OutputNode();
+        graph.AddNode(outputNode);
+        
+        // Connect input to output
+        var connection = graph.AddConnection(
+            inputNode.OutputConnectors.First(),
+            outputNode.InputConnectors.First()
+        );
+        
+        var options = SerializationFactory.CreateOptions();
+
+        // Act
+        var json = JsonSerializer.Serialize(graph, options);
+        var jsonDoc = JsonDocument.Parse(json);
+
+        // Assert
+        jsonDoc.RootElement.GetProperty("nodes").GetArrayLength().ShouldBe(2);
+        
+        var connections = jsonDoc.RootElement.GetProperty("connections");
+        connections.GetArrayLength().ShouldBe(1);
+        
+        var firstConnection = connections[0];
+        firstConnection.GetProperty("source").GetProperty("id").GetString()
+            .ShouldBe(inputNode.OutputConnectors.First().Id.ToString());
+        firstConnection.GetProperty("target").GetProperty("id").GetString()
+            .ShouldBe(outputNode.InputConnectors.First().Id.ToString());
+    }
+
+    [Fact]
+    public void Deserialize_JsonWithConnectedNodes_ShouldReconstructGraph()
+    {
+        // Arrange
+        var inputNodeId = Guid.NewGuid();
+        var outputNodeId = Guid.NewGuid();
+        var inputConnectorId = Guid.NewGuid();
+        var outputConnectorId = Guid.NewGuid();
+        
+        var json = @"{
+            ""type"": ""Graph"",
+            ""$version"": ""1.0"",
+            ""nodes"": [
+                {
+                    ""type"": ""InputJsonNode"",
+                    ""id"": """ + inputNodeId + @""",
+                    ""inputs"": [],
+                    ""outputs"": [
+                        {
+                            ""type"": ""Connector"",
+                            ""id"": """ + outputConnectorId + @""",
+                            ""dataType"": ""System.Object, System.Private.CoreLib""
+                        }
+                    ]
+                },
+                {
+                    ""type"": ""OutputNode"",
+                    ""id"": """ + outputNodeId + @""",
+                    ""inputs"": [
+                        {
+                            ""type"": ""Connector"",
+                            ""id"": """ + inputConnectorId + @""",
+                            ""dataType"": ""System.Object, System.Private.CoreLib""
+                        }
+                    ],
+                    ""outputs"": []
+                }
+            ],
+            ""connections"": [
+                {
+                    ""source"": {
+                        ""type"": ""Connector"",
+                        ""id"": """ + outputConnectorId + @""",
+                        ""dataType"": ""System.Object, System.Private.CoreLib""
+                    },
+                    ""target"": {
+                        ""type"": ""Connector"",
+                        ""id"": """ + inputConnectorId + @""",
+                        ""dataType"": ""System.Object, System.Private.CoreLib""
+                    }
+                }
+            ]
+        }";
+        
+        var options = SerializationFactory.CreateOptions();
+
+        // Act
+        var graph = JsonSerializer.Deserialize<Graph>(json, options);
+
+        // Assert
+        graph.ShouldNotBeNull();
+        graph.Nodes.Count.ShouldBe(2);
+        graph.Connections.Count.ShouldBe(1);
+        
+        var inputNode = graph.Nodes.OfType<InputJsonNode>().Single();
+        var outputNode = graph.Nodes.OfType<OutputNode>().Single();
+        
+        inputNode.Id.ShouldBe(inputNodeId);
+        outputNode.Id.ShouldBe(outputNodeId);
+        
+        var connection = graph.Connections.Single();
+        connection.Source.Id.ShouldBe(outputConnectorId);
+        connection.Target.Id.ShouldBe(inputConnectorId);
+        
+        // Verify connection endpoints
+        var sourceConnector = inputNode.OutputConnectors.Single(c => c.Id == outputConnectorId);
+        var targetConnector = outputNode.InputConnectors.Single(c => c.Id == inputConnectorId);
+        connection.Source.ShouldBe(sourceConnector);
+        connection.Target.ShouldBe(targetConnector);
     }
 } 

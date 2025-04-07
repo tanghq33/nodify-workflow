@@ -25,6 +25,7 @@ alwaysApply: true
         * `docs/technical.md` (Technical specifications, established patterns, .NET version, libraries) if it exists.
         * `tasks/tasks.md` (Current development tasks, requirements) if it exists.
     * If documentation is missing, unclear, or conflicts with the request, **ask for clarification**.
+    * Always perform tasks and subtasks 1 by 1.
 2.  **Architecture Adherence:**
     * Understand and respect project layer structures (e.g., presentation, business, data access), module boundaries, data flow, system interfaces, and component dependencies outlined in `@architecture-overview.md` and `docs/architecture.md`.
     * Validate that changes comply with the established architecture. Warn and propose compliant solutions if a violation is detected.
