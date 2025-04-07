@@ -78,7 +78,7 @@ public class IfElseMergeIntegrationTests
         var startNode = new StartNode();
         var ifElseNode = new IfElseNode
         {
-            InputVariableName = "ShouldGoTrue",
+            VariableName = "TestVar",
             Conditions = new List<ConditionRuleBase>
             {
                 new EqualityConditionRule 
@@ -166,7 +166,7 @@ public class IfElseMergeIntegrationTests
 
         // Setup execution context with condition value
         var context = new Nodify.Workflow.Core.Execution.Context.ExecutionContext();
-        context.SetVariable("ShouldGoTrue", true);
+        context.SetVariable("TestVar", true);
 
         // Act
         await _runner.RunAsync(startNode, context, CancellationToken.None);

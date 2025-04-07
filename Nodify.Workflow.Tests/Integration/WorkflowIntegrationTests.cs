@@ -29,7 +29,10 @@ public class WorkflowIntegrationTests
         // Create nodes
         var startNode = new StartNode();
         var setInputNode = new SetVariableNode { VariableName = "myValue", Value = 10 };
-        var ifElseNode = new IfElseNode { InputVariableName = "myValue" };
+        var ifElseNode = new IfElseNode
+        {
+            VariableName = "myValue"
+        };
         var setTrueNode = new SetVariableNode { VariableName = "result", Value = "Greater" };
         var setFalseNode = new SetVariableNode { VariableName = "result", Value = "Not Greater" };
         var mergeNode = new MergeNode();
@@ -96,7 +99,10 @@ public class WorkflowIntegrationTests
         // Create nodes
         var startNode = new StartNode();
         var setInputNode = new SetVariableNode { VariableName = "myValue", Value = 3 };
-        var ifElseNode = new IfElseNode { InputVariableName = "myValue" };
+        var ifElseNode = new IfElseNode
+        {
+            VariableName = "myValue"
+        };
         var setTrueNode = new SetVariableNode { VariableName = "result", Value = "Greater" };
         var setFalseNode = new SetVariableNode { VariableName = "result", Value = "Not Greater" };
         var mergeNode = new MergeNode();

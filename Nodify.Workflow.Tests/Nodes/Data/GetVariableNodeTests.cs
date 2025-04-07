@@ -63,33 +63,17 @@ public class GetVariableNodeTests
         // Arrange
         var node = new GetVariableNode { VariableName = "TestVar" };
         var context = Substitute.For<IExecutionContext>();
-        var cancellationToken = CancellationToken.None;
-        var expectedValue = "Hello World";
-        object? outValue = null; // Needed for out parameter
-
-        // Setup context mock
-        context.TryGetVariable<object>("TestVar", out outValue)
-               .Returns(args => { 
-                   args[1] = expectedValue; // Set the out parameter
-                   return true; 
-                });
-
-        // Need connector IDs - tricky to get deterministically without names/keys
-        // Let's get them by order/type assumption for the test
-        var flowOutputConnector = node.OutputConnectors.First(c => c.DataType == typeof(object)); 
-        var valueOutputConnector = node.OutputConnectors.First(c => c != flowOutputConnector);
-        var expectedFlowOutputId = flowOutputConnector.Id;
-        var valueOutputId = valueOutputConnector.Id;
+        object? outVar = "Hello World";
+        context.TryGetVariable<object>("TestVar", out Arg.Any<object?>())
+            .Returns(callInfo => { callInfo[1] = outVar; return true; });
 
         // Act
-        var result = await node.ExecuteAsync(context, null, cancellationToken);
+        var result = await node.ExecuteAsync(context, null, CancellationToken.None);
 
         // Assert
-        context.Received(1).TryGetVariable<object>("TestVar", out outValue);
-        context.Received(1).SetOutputConnectorValue(valueOutputId, expectedValue);
         result.Success.ShouldBeTrue();
-        result.Error.ShouldBeNull();
-        result.ActivatedOutputConnectorId.ShouldBe(expectedFlowOutputId);
+        result.ActivatedOutputConnectorId.ShouldBe(node.OutputConnectors.First(c => c.DataType == typeof(object)).Id);
+        result.OutputData.ShouldBe("Hello World");
     }
 
     [Fact]

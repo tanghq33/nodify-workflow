@@ -14,7 +14,7 @@ namespace Nodify.Workflow.Nodes.Data;
 public class OutputNode : Node
 {
     // Configurable Property: Name of the variable to store the result in.
-    public string OutputName { get; set; } = string.Empty;
+    public string VariableName { get; set; } = string.Empty;
 
     // Input Connector ID
     private readonly Guid _inputConnectorId;
@@ -31,15 +31,15 @@ public class OutputNode : Node
     public override Task<NodeExecutionResult> ExecuteAsync(IExecutionContext context, object? inputData, CancellationToken cancellationToken)
     {
         // The inputData received is what we want to store.
-        if (string.IsNullOrWhiteSpace(OutputName))
+        if (string.IsNullOrWhiteSpace(VariableName))
         {
-            return Task.FromResult(NodeExecutionResult.Failed(new InvalidOperationException("OutputName property cannot be null or empty.")));
+            return Task.FromResult(NodeExecutionResult.Failed(new InvalidOperationException("VariableName property cannot be null or empty.")));
         }
 
         try
         {
-            // Store the received inputData in the context using the specified OutputName
-            context.SetVariable(OutputName, inputData);
+            // Store the received inputData in the context using the specified VariableName
+            context.SetVariable(VariableName, inputData);
             
             // OutputNode represents an end point for data flow, so it doesn't activate any further output connectors.
             // We return success without an ActivatedOutputConnectorId.
@@ -60,9 +60,9 @@ public class OutputNode : Node
         }
         
         // Essential property for execution must be set
-        if (string.IsNullOrWhiteSpace(OutputName))
+        if (string.IsNullOrWhiteSpace(VariableName))
         {
-            return false; // Consider it invalid if OutputName is not set
+            return false; // Consider it invalid if VariableName is not set
         }
 
         return true;

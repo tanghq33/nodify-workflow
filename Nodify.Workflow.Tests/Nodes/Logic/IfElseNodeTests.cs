@@ -45,7 +45,7 @@ public class IfElseNodeTests
     {
         _node = new IfElseNode
         {
-            InputVariableName = "InputData",
+            VariableName = "TestVar",
             Conditions = conditions
         };
         _context = Substitute.For<IExecutionContext>();
@@ -53,13 +53,13 @@ public class IfElseNodeTests
         
         // NSubstitute setup for TryGetVariable (refined)
         object? testDataObj = _testData;
-        _context.TryGetVariable<object>(Arg.Is("InputData"), out Arg.Any<object?>()) 
+        _context.TryGetVariable<object>(Arg.Is("TestVar"), out Arg.Any<object?>()) 
                 .Returns(callInfo => 
                 { 
                     callInfo[1] = testDataObj; 
                     return true; 
                 });
-        _context.TryGetVariable<object>(Arg.Is<string>(s => s != "InputData"), out Arg.Any<object?>())
+        _context.TryGetVariable<object>(Arg.Is<string>(s => s != "TestVar"), out Arg.Any<object?>())
                 .Returns(callInfo => 
                 { 
                     callInfo[1] = null; 
@@ -76,6 +76,7 @@ public class IfElseNodeTests
     {
         // Arrange & Act
         var node = new IfElseNode();
+        node.VariableName = "TestVar";
 
         // Assert
         node.InputConnectors.Count.ShouldBe(1);
@@ -200,7 +201,7 @@ public class IfElseNodeTests
     {
         // Arrange
         SetupNode(new List<ConditionRuleBase>());
-        _node.InputVariableName = " "; // Empty
+        _node.VariableName = " "; // Empty
 
         // Act
         var result = await _node.ExecuteAsync(_context, null, CancellationToken.None);
@@ -208,7 +209,7 @@ public class IfElseNodeTests
         // Assert
         result.Success.ShouldBeFalse();
         result.Error.ShouldBeOfType<InvalidOperationException>();
-        result.Error?.Message.ShouldContain("InputVariableName");
+        result.Error?.Message.ShouldContain("VariableName");
     }
 
     [Fact]
@@ -216,7 +217,7 @@ public class IfElseNodeTests
     {
         // Arrange
         SetupNode(new List<ConditionRuleBase>());
-        _node.InputVariableName = "WrongName";
+        _node.VariableName = "WrongName";
         object? outVar = null;
         // Make TryGetVariable return false for the wrong name
         _context.TryGetVariable<object>("WrongName", out outVar).Returns(false);

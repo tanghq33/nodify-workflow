@@ -17,7 +17,7 @@ namespace Nodify.Workflow.Nodes.Logic; // Changed namespace to Logic
 public class IfElseNode : Node
 {
     // Configurable Properties
-    public string InputVariableName { get; set; } = string.Empty;
+    public string VariableName { get; set; } = string.Empty;
     public List<ConditionRuleBase> Conditions { get; set; } = new List<ConditionRuleBase>();
     
     /// <summary>
@@ -51,21 +51,21 @@ public class IfElseNode : Node
 
     public override Task<NodeExecutionResult> ExecuteAsync(IExecutionContext context, object? inputData, CancellationToken cancellationToken)
     {
-        Debug.WriteLine($"[IfElseNode ExecuteAsync Start] Variable: {InputVariableName}"); // DEBUG
+        Debug.WriteLine($"[IfElseNode ExecuteAsync Start] Variable: {VariableName}"); // DEBUG
         // InputData is ignored by IfElseNode as it primarily controls flow based on context variables.
 
         // 1. Validate Input Variable Name
-        if (string.IsNullOrWhiteSpace(InputVariableName))
+        if (string.IsNullOrWhiteSpace(VariableName))
         {
             Debug.WriteLine("[IfElseNode ExecuteAsync] Error: InputVariableName is empty."); // DEBUG
-            return Task.FromResult(NodeExecutionResult.Failed(new InvalidOperationException("InputVariableName property cannot be empty.")));
+            return Task.FromResult(NodeExecutionResult.Failed(new InvalidOperationException("VariableName property cannot be empty.")));
         }
 
         // 2. Get Target Object from Context
-        if (!context.TryGetVariable<object>(InputVariableName, out var targetObject))
+        if (!context.TryGetVariable<object>(VariableName, out var targetObject))
         {
-             Debug.WriteLine($"[IfElseNode ExecuteAsync] Error: Variable '{InputVariableName}' not found."); // DEBUG
-             return Task.FromResult(NodeExecutionResult.Failed(new KeyNotFoundException($"Input variable '{InputVariableName}' not found in the execution context.")));
+             Debug.WriteLine($"[IfElseNode ExecuteAsync] Error: Variable '{VariableName}' not found."); // DEBUG
+             return Task.FromResult(NodeExecutionResult.Failed(new KeyNotFoundException($"Variable '{VariableName}' not found in the execution context.")));
         }
         Debug.WriteLine($"[IfElseNode ExecuteAsync] Input Value: {targetObject ?? "null"}"); // DEBUG
         

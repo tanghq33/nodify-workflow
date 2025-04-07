@@ -48,7 +48,7 @@ public class NodeIntegrationTests
         var runner = CreateRunner();
         
         var inputJsonNode = new InputJsonNode { JsonContent = "{\"id\": 1, \"msg\": \"Success\"}" };
-        var outputNode = new OutputNode { OutputName = "ParsedJson" };
+        var outputNode = new OutputNode { VariableName = "ParsedJson" };
         
         graph.AddNode(inputJsonNode);
         graph.AddNode(outputNode);
@@ -76,7 +76,7 @@ public class NodeIntegrationTests
         var context = new Nodify.Workflow.Core.Execution.Context.ExecutionContext();
         var runner = CreateRunner();
         var initialInputNode = new InputJsonNode { JsonContent = "{\"status\": \"active\", \"count\": 5}" };
-        var prepOutputNode = new OutputNode { OutputName = "MyJsonData" };
+        var prepOutputNode = new OutputNode { VariableName = "MyJsonData" };
         
         prepGraph.AddNode(initialInputNode);
         prepGraph.AddNode(prepOutputNode);
@@ -91,7 +91,7 @@ public class NodeIntegrationTests
         var startNode = new StartNode();
         var ifElseNode = new IfElseNode 
         {
-             InputVariableName = "MyJsonData",
+             VariableName = "MyJsonData",
              Conditions = new System.Collections.Generic.List<ConditionRuleBase>
              {
                  new StringConditionRule { PropertyPath = "status", Operator = StringOperator.Equals, ComparisonValue = "active" }
@@ -127,7 +127,7 @@ public class NodeIntegrationTests
         // --- Part 3: Test False Path --- 
         context = new Nodify.Workflow.Core.Execution.Context.ExecutionContext(); // Reset context
         initialInputNode = new InputJsonNode { JsonContent = "{\"status\": \"inactive\", \"count\": 5}" }; // Change status
-        prepOutputNode = new OutputNode { OutputName = "MyJsonData" }; // Re-use config, new instance not strictly needed but clear
+        prepOutputNode = new OutputNode { VariableName = "MyJsonData" }; // Re-use config, new instance not strictly needed but clear
         
         // Pre-populate context again with 'inactive' status
         prepGraph = new Graph(); // Recreate graph for clarity

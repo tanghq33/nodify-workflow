@@ -50,10 +50,8 @@ public class GetVariableNode : Node
 
         if (context.TryGetVariable<object>(VariableName, out var value))
         {
-            // Set the output connector value in the context
-            context.SetOutputConnectorValue(_valueOutputId, value);
-            // Return success with the flow output connector activated
-            return Task.FromResult(NodeExecutionResult.Succeeded(_flowOutputId));
+            // Return success with both flow output and data output
+            return Task.FromResult(NodeExecutionResult.SucceededWithData(_flowOutputId, value));
         }
         else
         {
