@@ -55,10 +55,10 @@ This document restructures the development milestones to follow a Test-Driven De
   - [ ] Test conditional evaluation helpers (if applicable)
   - [x] Test tracking the currently executing node (if applicable)
 - [x] Develop test cases for graph traversal algorithms
-  - [x] Depth-first traversal tests
-  - [x] Breadth-first traversal tests
-  - [x] Cycle detection tests
-  - [x] Path finding tests
+  - [x] Depth-first traversal tests (implicitly covered by execution)
+  - [ ] Breadth-first traversal tests
+  - [x] Cycle detection tests (implicitly covered by execution)
+  - [ ] Path finding tests
 - [x] Create tests for execution events (started, completed, failed)
 - [x] Design tests for asynchronous execution scenarios
 - [x] Implement tests for execution cancellation
@@ -66,10 +66,10 @@ This document restructures the development milestones to follow a Test-Driven De
 #### Day 3-4: Execution Engine Implementation
 - [x] Implement ExecutionContext based on test specifications
 - [x] Develop scheduler/traversal algorithm to pass tests
-  - [x] Depth-first traversal implementation
-  - [x] Breadth-first traversal implementation
-  - [x] Cycle handling
-  - [x] Path finding algorithms
+  - [x] Depth-first traversal implementation (core runner logic)
+  - [ ] Breadth-first traversal implementation
+  - [x] Cycle handling (implicitly covered by runner logic)
+  - [ ] Path finding algorithms
 - [x] Create execution event system as defined in tests
 - [x] Implement asynchronous execution support
 - [x] Add cancellation mechanism
@@ -83,28 +83,28 @@ This document restructures the development milestones to follow a Test-Driven De
 ### Milestone 1.3: Node Registry & Basic Nodes (Week 3)
 
 #### Day 1-2: Node System Test Development
-- [ ] Create tests for Node Registry (registration, retrieval)
-- [ ] Write test cases for abstract node behavior
-- [ ] Develop tests for each core node type:
-  - [ ] If Node tests (condition evaluation, branching)
-  - [ ] Set Variable Node tests (variable manipulation)
-  - [ ] Input JSON Node tests (parsing, validation)
-  - [ ] Output Node tests (result capture)
-- [ ] Design tests for node validation framework
+- [x] Create tests for Node Registry (registration, retrieval)
+- [x] Write test cases for abstract node behavior
+- [x] Develop tests for each core node type:
+  - [x] If Node tests (condition evaluation, branching)
+  - [x] Set Variable Node tests (variable manipulation)
+  - [x] Input JSON Node tests (parsing, validation)
+  - [x] Output Node tests (result capture)
+- [x] Design tests for node validation framework
 
 #### Day 3-4: Node System Implementation
-- [ ] Implement Node Registry based on test requirements
-- [ ] Create abstract base classes for nodes
-- [ ] Develop core node implementations:
-  - [ ] If Node implementation
-  - [ ] Set Variable Node implementation
-  - [ ] Input JSON Node implementation
-  - [ ] Output Node implementation
-- [ ] Implement node validation framework
+- [x] Implement Node Registry based on test requirements
+- [x] Create abstract base classes for nodes
+- [x] Develop core node implementations:
+  - [x] If Node implementation
+  - [x] Set Variable Node implementation
+  - [x] Input JSON Node implementation
+  - [x] Output Node implementation
+- [x] Implement node validation framework
 
 #### Day 5: Node Integration Testing
-- [ ] Create integration tests for node interactions
-- [ ] Test node compositions (chains, branches)
+- [x] Create integration tests for node interactions
+- [x] Test node compositions (chains, branches)
 - [ ] Refactor node implementations for consistency
 - [ ] Document node extension patterns
 

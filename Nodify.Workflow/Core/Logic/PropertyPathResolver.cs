@@ -1,6 +1,7 @@
 using System;
 using System.Reflection;
 using System.Diagnostics;
+using System.Text.Json; // Added for JsonElement
 
 namespace Nodify.Workflow.Core.Logic;
 
@@ -37,6 +38,11 @@ public static class PropertyPathResolver
         string[] parts = path.Split('.');
         object? currentObject = target;
 
+        if (currentObject is JsonElement jsonElementTarget)
+        {
+            return TryResolvePathForJsonElement(jsonElementTarget, parts, out value, out errorMessage);
+        }
+
         foreach (string part in parts)
         {
             if (currentObject == null)
@@ -66,8 +72,62 @@ public static class PropertyPathResolver
             }
         }
 
-        // Successfully resolved the entire path
         value = currentObject;
         return true;
     }
-} 
+
+    private static bool TryResolvePathForJsonElement(JsonElement targetElement, string[] pathParts, out object? value, out string? errorMessage)
+    {
+        value = null;
+        errorMessage = null;
+        JsonElement currentElement = targetElement;
+
+        foreach (string part in pathParts)
+        {
+            if (currentElement.ValueKind != JsonValueKind.Object)
+            {
+                errorMessage = $"Cannot resolve path part '{part}' because the current JSON element is not an object (found {currentElement.ValueKind}).";
+                return false;
+            }
+
+            if (!currentElement.TryGetProperty(part, out JsonElement nextElement))
+            {
+                bool foundCaseInsensitive = false;
+                foreach(var property in currentElement.EnumerateObject())
+                {
+                    if (property.Name.Equals(part, StringComparison.OrdinalIgnoreCase))
+                    {
+                        nextElement = property.Value;
+                        foundCaseInsensitive = true;
+                        break;
+                    }
+                }
+                if (!foundCaseInsensitive)
+                {
+                    errorMessage = $"JSON property '{part}' not found in the current object.";
+                    return false;
+                }
+            }
+            currentElement = nextElement;
+        }
+
+        value = ConvertJsonElement(currentElement);
+        return true;
+    }
+
+    private static object? ConvertJsonElement(JsonElement element)
+    {
+        return element.ValueKind switch
+        {
+            JsonValueKind.Object => element.Clone(),
+            JsonValueKind.Array => element.Clone(),
+            JsonValueKind.String => element.GetString(),
+            JsonValueKind.Number => element.TryGetDouble(out double doubleVal) ? doubleVal : (object)element.GetInt64(),
+            JsonValueKind.True => true,
+            JsonValueKind.False => false,
+            JsonValueKind.Null => null,
+            JsonValueKind.Undefined => null,
+            _ => element.ToString()
+        };
+    }
+}

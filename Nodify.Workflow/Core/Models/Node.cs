@@ -24,8 +24,8 @@ public abstract class Node : INode
     /// <inheritdoc />
     public double Y { get; set; }
 
-    private readonly List<IConnector> _inputConnectors = new List<IConnector>();
-    private readonly List<IConnector> _outputConnectors = new List<IConnector>();
+    private readonly List<IConnector> _inputConnectors;
+    private readonly List<IConnector> _outputConnectors;
 
     /// <inheritdoc />
     public IReadOnlyCollection<IConnector> InputConnectors => _inputConnectors.AsReadOnly();
