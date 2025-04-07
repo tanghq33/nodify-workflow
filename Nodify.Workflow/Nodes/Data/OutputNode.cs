@@ -19,10 +19,19 @@ public class OutputNode : Node
     // Input Connector ID
     private readonly Guid _inputConnectorId;
 
-    public OutputNode()
+    public OutputNode() : base()
     {
         // Input Data Connector
         var inputConnector = new Connector(this, ConnectorDirection.Input, typeof(object));
+        _inputConnectorId = inputConnector.Id;
+        AddInputConnector(inputConnector);
+        // No output connectors for this node type
+    }
+
+    public OutputNode(Guid id) : base(id)
+    {
+        // Input Data Connector with a specific ID for deserialization
+        var inputConnector = new Connector(this, ConnectorDirection.Input, typeof(object), Guid.Parse("87654321-4321-4321-4321-987654321098"));
         _inputConnectorId = inputConnector.Id;
         AddInputConnector(inputConnector);
         // No output connectors for this node type

@@ -28,8 +28,13 @@ public class Connector : IConnector
     public IReadOnlyCollection<IConnection> Connections => _connections.AsReadOnly();
 
     public Connector(INode parentNode, ConnectorDirection direction, Type dataType)
+        : this(parentNode, direction, dataType, Guid.NewGuid())
     {
-        Id = Guid.NewGuid();
+    }
+
+    public Connector(INode parentNode, ConnectorDirection direction, Type dataType, Guid id)
+    {
+        Id = id;
         ParentNode = parentNode ?? throw new ArgumentNullException(nameof(parentNode));
         Direction = direction;
         DataType = dataType ?? throw new ArgumentNullException(nameof(dataType));

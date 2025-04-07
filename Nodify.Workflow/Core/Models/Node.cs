@@ -16,7 +16,7 @@ namespace Nodify.Workflow.Core.Models;
 public abstract class Node : INode
 {
     /// <inheritdoc />
-    public Guid Id { get; }
+    public Guid Id { get; protected set; }
 
     /// <inheritdoc />
     public double X { get; set; }
@@ -103,6 +103,13 @@ public abstract class Node : INode
     protected Node()
     {
         Id = Guid.NewGuid();
+        _inputConnectors = new List<IConnector>();
+        _outputConnectors = new List<IConnector>();
+    }
+
+    protected Node(Guid id)
+    {
+        Id = id;
         _inputConnectors = new List<IConnector>();
         _outputConnectors = new List<IConnector>();
     }
